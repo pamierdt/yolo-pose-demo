@@ -153,12 +153,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         if (debugLogsRemaining > 0) {
             val signature = "$runningMode-$width-$height-$imageWidth-$imageHeight-$scaleFactor-$imageTranslateX-$imageTranslateY"
             if (signature != lastLogSignature) {
-                Log.d(
-                    TAG,
-                    "Overlay scale: mode=$runningMode view=${width}x$height image=${imageWidth}x$imageHeight " +
-                            "scale=${"%.4f".format(scaleFactor)} scaled=${scaledWidth.toInt()}x${scaledHeight.toInt()} " +
-                            "translate=(${imageTranslateX.toInt()},${imageTranslateY.toInt()})"
-                )
                 lastLogSignature = signature
                 debugLogsRemaining--
             }

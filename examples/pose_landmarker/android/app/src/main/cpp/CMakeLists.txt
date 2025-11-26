@@ -30,6 +30,7 @@ find_library(android-lib android)
 target_link_libraries(
     rknn_jni
     rknnrt
+    jnigraphics
     ${log-lib}
     ${android-lib}
 )

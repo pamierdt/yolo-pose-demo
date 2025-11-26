@@ -66,7 +66,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_BACK
-    private val targetResolution = Size(1280, 720)
+    private val targetResolution = Size(640, 640)
     @Volatile private var lastAnalysisResolution: Size? = null
     @Volatile private var lastAnalysisRotation: Int = 0
     private var debugLogsRemaining = 5

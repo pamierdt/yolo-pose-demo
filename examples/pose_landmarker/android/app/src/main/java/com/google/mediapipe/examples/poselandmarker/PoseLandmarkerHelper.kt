@@ -12,7 +12,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
-import android.util.Half
 import androidx.annotation.VisibleForTesting
 import androidx.camera.core.ImageProxy
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -49,6 +48,9 @@ class PoseLandmarkerHelper(
     private var gpuDelegate: Delegate? = null
     private var rknnRunner: RknnRunner? = null
     private var loggedPreprocessInfo = false
+    private var inputBitmap: Bitmap? = null
+    private var pixelBuffer: IntArray? = null
+    private var debugLogging: Boolean = false
 
     init {
         setupPoseLandmarker()
@@ -169,29 +171,63 @@ class PoseLandmarkerHelper(
 
         val frameTime = SystemClock.uptimeMillis()
         val bitmapBuffer = imageProxyToBitmap(imageProxy)
+        val rotation = imageProxy.imageInfo.rotationDegrees
+        if (debugLogging) Log.d(TAG, "Live frame: src=${bitmapBuffer.width}x${bitmapBuffer.height} rot=${rotation} front=${isFrontCamera}")
         imageProxy.close()
 
-        val matrix = Matrix().apply {
-            postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
-            if (isFrontCamera) {
-                // Mirror around center to match the PreviewView behavior.
-                postScale(-1f, 1f, bitmapBuffer.width / 2f, bitmapBuffer.height / 2f)
-            }
-        }
-
-        val rotatedBitmap = Bitmap.createBitmap(
-            bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true
-        )
-
-        runPoseEstimation(rotatedBitmap)?.let { result ->
+        runPoseEstimation(bitmapBuffer)?.let { result ->
+            val transformed = if (result.results.isNotEmpty()) {
+                transformForDisplay(result.results.first(), rotation, isFrontCamera)
+            } else null
+            val displayWidth = if (rotation == 90 || rotation == 270) bitmapBuffer.height else bitmapBuffer.width
+            val displayHeight = if (rotation == 90 || rotation == 270) bitmapBuffer.width else bitmapBuffer.height
+            if (debugLogging) Log.d(TAG, "Live result: poses=${(transformed?.poses ?: result.results.firstOrNull()?.poses ?: emptyList()).size} disp=${displayWidth}x${displayHeight}")
             poseLandmarkerHelperListener?.onResults(
                 result.copy(
+                    results = transformed?.let { listOf(it) } ?: result.results,
                     inferenceTime = SystemClock.uptimeMillis() - frameTime,
-                    inputImageHeight = rotatedBitmap.height,
-                    inputImageWidth = rotatedBitmap.width
+                    inputImageHeight = displayHeight,
+                    inputImageWidth = displayWidth
                 )
             )
         } ?: poseLandmarkerHelperListener?.onError("YOLO pose 推理失败")
+    }
+
+    private fun transformForDisplay(src: PoseResult, rotation: Int, mirror: Boolean): PoseResult {
+        fun rot(x: Float, y: Float): Pair<Float, Float> {
+            val r = ((rotation % 360) + 360) % 360
+            return when (r) {
+                90 -> Pair(y, 1f - x)
+                180 -> Pair(1f - x, 1f - y)
+                270 -> Pair(1f - y, x)
+                else -> Pair(x, y)
+            }
+        }
+        fun apply(x: Float, y: Float): Pair<Float, Float> {
+            val p = rot(x, y)
+            val nx = if (mirror) 1f - p.first else p.first
+            return Pair(nx, p.second)
+        }
+        val poses = src.poses.map { p ->
+            val lt = apply(p.boundingBox.left, p.boundingBox.top)
+            val rb = apply(p.boundingBox.right, p.boundingBox.bottom)
+            val lb = apply(p.boundingBox.left, p.boundingBox.bottom)
+            val rt = apply(p.boundingBox.right, p.boundingBox.top)
+            val xs = listOf(lt.first, rb.first, lb.first, rt.first)
+            val ys = listOf(lt.second, rb.second, lb.second, rt.second)
+            val box = RectF(
+                xs.minOrNull()!!.coerceIn(0f, 1f),
+                ys.minOrNull()!!.coerceIn(0f, 1f),
+                xs.maxOrNull()!!.coerceIn(0f, 1f),
+                ys.maxOrNull()!!.coerceIn(0f, 1f)
+            )
+            val kps = p.keypoints.map { kp ->
+                val t = apply(kp.x, kp.y)
+                PoseKeypoint(t.first.coerceIn(0f, 1f), t.second.coerceIn(0f, 1f), kp.score)
+            }
+            Pose(p.score, box, kps)
+        }
+        return PoseResult(poses)
     }
 
     private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap {
@@ -203,6 +239,8 @@ class PoseLandmarkerHelper(
         val rowStride = plane.rowStride
         val rowPadding = (rowStride - pixelStride * imageProxy.width).coerceAtLeast(0)
         val bitmapWidth = imageProxy.width + rowPadding / pixelStride
+
+        if (debugLogging) Log.d(TAG, "ImageProxy: src=${imageProxy.width}x${imageProxy.height} pixelStride=${pixelStride} rowStride=${rowStride} rowPadding=${rowPadding} paddedW=${bitmapWidth}")
 
         val paddedBitmap =
             Bitmap.createBitmap(bitmapWidth, imageProxy.height, Bitmap.Config.ARGB_8888)
@@ -272,58 +310,122 @@ class PoseLandmarkerHelper(
 
     @VisibleForTesting
     fun runPoseEstimation(bitmap: Bitmap): ResultBundle? {
-        val useRknn = rknnRunner != null
-        val (inputBuffer, letterbox) = preprocess(bitmap, useRknn)
-
         val startTime = SystemClock.uptimeMillis()
-        val (floatArray, outputShape) = if (rknnRunner != null) {
-            val runner = rknnRunner ?: return null
-            val output = runner.run(inputBuffer)
-            output to runner.outputShape
-        } else {
-            val localInterpreter = interpreter ?: return null
-            val outputShapeLocal = localInterpreter.getOutputTensor(0).shape()
-            val outputSize = outputShapeLocal.fold(1) { acc, i -> acc * i }
-            val outputBuffer =
-                ByteBuffer.allocateDirect(4 * outputSize).order(ByteOrder.nativeOrder())
-            localInterpreter.run(inputBuffer, outputBuffer)
-            val floatArrayLocal = FloatArray(outputSize)
-            outputBuffer.rewind()
-            outputBuffer.asFloatBuffer().get(floatArrayLocal)
-            floatArrayLocal to outputShapeLocal
-        }
-        val inferenceTime = SystemClock.uptimeMillis() - startTime
-
-        // Log the first 100 raw float values from the model's output
-        val rawOutputSample = floatArray.take(100).joinToString(", ")
-        Log.d(
-            TAG,
-            "Raw model output: shape=${outputShape.joinToString("x")} size=${floatArray.size}, " +
-                    "first 100 floats=[$rawOutputSample]"
-        )
-
-        val poseResult =
-            decodeOutputs(floatArray, outputShape, letterbox, bitmap.width, bitmap.height)
         
-        val topScore = poseResult.poses.maxOfOrNull { it.score } ?: 0f
-        Log.d(
-            TAG,
-            "YOLO pose decoded: poses=${poseResult.poses.size}, topScore=$topScore"
-        )
+        // If RKNN runner is available, use the optimized path with C++ NMS
+        if (rknnRunner != null) {
+            val runner = rknnRunner!!
+            val t0 = SystemClock.uptimeMillis()
+            val (inputBitmap, letterbox) = preprocessToBitmap(bitmap)
+            
+            // Use new native method with built-in NMS and direct Bitmap access
+            val t1 = SystemClock.uptimeMillis()
+            val serializedOutput = runner.runBitmapWithNms(
+                inputBitmap, 
+                minPoseDetectionConfidence, 
+                minPosePresenceConfidence
+            )
+            val t2 = SystemClock.uptimeMillis()
+            val inferenceTime = SystemClock.uptimeMillis() - startTime
+            val poseResult = parseSerializedOutput(serializedOutput, letterbox, bitmap.width, bitmap.height)
+            val t3 = SystemClock.uptimeMillis()
+            if (debugLogging) Log.d(TAG, "Kotlin Profile: Letterbox=${t1 - t0} ms, Native=${t2 - t1} ms, Parse=${t3 - t2} ms, Total=${t3 - t0} ms")
+            if (debugLogging) Log.d(TAG, "RKNN Pose decoded: poses=${poseResult.poses.size}")
+            return ResultBundle(listOf(poseResult), inferenceTime, bitmap.height, bitmap.width)
+        }
 
+        // TFLite fallback path
+        val localInterpreter = interpreter ?: return null
+        val (inputBuffer, letterbox) = preprocess(bitmap)
+        val outputShapeLocal = localInterpreter.getOutputTensor(0).shape()
+        val outputSize = outputShapeLocal.fold(1) { acc, i -> acc * i }
+        val outputBuffer = ByteBuffer.allocateDirect(4 * outputSize).order(ByteOrder.nativeOrder())
+        localInterpreter.run(inputBuffer, outputBuffer)
+        val floatArrayLocal = FloatArray(outputSize)
+        outputBuffer.rewind()
+        outputBuffer.asFloatBuffer().get(floatArrayLocal)
+        
+        val inferenceTime = SystemClock.uptimeMillis() - startTime
+        val poseResult = decodeOutputs(floatArrayLocal, outputShapeLocal, letterbox, bitmap.width, bitmap.height)
         return ResultBundle(listOf(poseResult), inferenceTime, bitmap.height, bitmap.width)
     }
+    
+    private fun parseSerializedOutput(
+        data: FloatArray,
+        letterbox: LetterboxParams,
+        originalWidth: Int,
+        originalHeight: Int
+    ): PoseResult {
+        if (data.isEmpty()) return PoseResult(emptyList())
 
-    private fun preprocess(bitmap: Bitmap, forRknn: Boolean): Pair<ByteBuffer, LetterboxParams> {
-        val inputBitmap =
-            Bitmap.createBitmap(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(inputBitmap)
-        val paint = Paint().apply { color = Color.DKGRAY }
+        val count = data[0].toInt()
+        val poses = mutableListOf<Pose>()
+        var offset = 1
 
-        canvas.drawRect(
-            0f, 0f, MODEL_INPUT_SIZE.toFloat(), MODEL_INPUT_SIZE.toFloat(), paint
-        )
+        if (count == 0) return PoseResult(emptyList())
 
+        // Calculate values per pose: (total size - 1 count) / count
+        val valuesPerPose = (data.size - 1) / count
+        // C++ returns: score, x, y, w, h (5 floats) + kps (3 floats per kp)
+        val numKeypoints = (valuesPerPose - 5) / 3
+
+        for (i in 0 until count) {
+            val score = data[offset++]
+            val cxNorm = data[offset++]
+            val cyNorm = data[offset++]
+            val wNorm = data[offset++]
+            val hNorm = data[offset++]
+
+            // C++ returns normalized coords relative to MODEL_INPUT_SIZE.
+            // Map back to original image using letterbox params.
+            val realCx = (cxNorm * MODEL_INPUT_SIZE - letterbox.padX) / letterbox.scale
+            val realCy = (cyNorm * MODEL_INPUT_SIZE - letterbox.padY) / letterbox.scale
+            val realW = (wNorm * MODEL_INPUT_SIZE) / letterbox.scale
+            val realH = (hNorm * MODEL_INPUT_SIZE) / letterbox.scale
+
+            val left = (realCx - realW / 2f) / originalWidth
+            val top = (realCy - realH / 2f) / originalHeight
+            val right = (realCx + realW / 2f) / originalWidth
+            val bottom = (realCy + realH / 2f) / originalHeight
+
+            val boundingBox = RectF(
+                max(0f, left),
+                max(0f, top),
+                min(1f, right),
+                min(1f, bottom)
+            )
+
+            val keypoints = mutableListOf<PoseKeypoint>()
+            for (k in 0 until numKeypoints) {
+                val kxNorm = data[offset++]
+                val kyNorm = data[offset++]
+                val ks = data[offset++]
+
+                val realKx = (kxNorm * MODEL_INPUT_SIZE - letterbox.padX) / letterbox.scale
+                val realKy = (kyNorm * MODEL_INPUT_SIZE - letterbox.padY) / letterbox.scale
+
+                keypoints.add(PoseKeypoint(
+                    (realKx / originalWidth).coerceIn(0f, 1f),
+                    (realKy / originalHeight).coerceIn(0f, 1f),
+                    ks
+                ))
+            }
+            poses.add(Pose(score, boundingBox, keypoints))
+        }
+        return PoseResult(poses)
+    }
+
+    private fun preprocessToBitmap(bitmap: Bitmap): Pair<Bitmap, LetterboxParams> {
+        if (inputBitmap == null || inputBitmap?.width != MODEL_INPUT_SIZE || inputBitmap?.height != MODEL_INPUT_SIZE) {
+            inputBitmap = Bitmap.createBitmap(MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, Bitmap.Config.ARGB_8888)
+        }
+        val currentInputBitmap = inputBitmap!!
+        
+        // Use eraseColor to clear background efficiently instead of drawing a rect
+        currentInputBitmap.eraseColor(Color.DKGRAY)
+        
+        val canvas = Canvas(currentInputBitmap)
+        
         val scale = min(
             MODEL_INPUT_SIZE.toFloat() / bitmap.width.toFloat(),
             MODEL_INPUT_SIZE.toFloat() / bitmap.height.toFloat()
@@ -336,7 +438,7 @@ class PoseLandmarkerHelper(
         val destRect = RectF(dx, dy, dx + newWidth, dy + newHeight)
         canvas.drawBitmap(bitmap, null, destRect, null)
 
-        if (!loggedPreprocessInfo) {
+        if (!loggedPreprocessInfo && debugLogging) {
             Log.d(
                 TAG,
                 "Preprocess: src=${bitmap.width}x${bitmap.height}, inputSize=${MODEL_INPUT_SIZE}, " +
@@ -344,39 +446,35 @@ class PoseLandmarkerHelper(
             )
             loggedPreprocessInfo = true
         }
+        return currentInputBitmap to LetterboxParams(scale, dx, dy)
+    }
 
-        val pixels = IntArray(MODEL_INPUT_SIZE * MODEL_INPUT_SIZE)
-        inputBitmap.getPixels(
+    private fun preprocessToPixels(bitmap: Bitmap): Pair<IntArray, LetterboxParams> {
+        val (currentInputBitmap, letterbox) = preprocessToBitmap(bitmap)
+
+        if (pixelBuffer == null || pixelBuffer?.size != MODEL_INPUT_SIZE * MODEL_INPUT_SIZE) {
+            pixelBuffer = IntArray(MODEL_INPUT_SIZE * MODEL_INPUT_SIZE)
+        }
+        val pixels = pixelBuffer!!
+        
+        currentInputBitmap.getPixels(
             pixels, 0, MODEL_INPUT_SIZE, 0, 0, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE
         )
+        return pixels to letterbox
+    }
 
-        return if (forRknn) {
-            // RKNN 模型输入被检测为 FP16 (type 1)，因此需要 2 字节/通道
-            // 之前的日志显示归一化到 0-1 后模型输出全为 0，这暗示模型可能期望 0-255 的数据范围
-            // 因此这里我们尝试传入 0-255 的 FP16 数值
-            val byteBuffer =
-                ByteBuffer.allocateDirect(2 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3)
-                    .order(ByteOrder.nativeOrder())
-            for (pixel in pixels) {
-                // 不除以 255f，直接传入像素值
-                byteBuffer.putShort(Half.toHalf(((pixel shr 16) and 0xFF).toFloat())) // R
-                byteBuffer.putShort(Half.toHalf(((pixel shr 8) and 0xFF).toFloat()))  // G
-                byteBuffer.putShort(Half.toHalf((pixel and 0xFF).toFloat()))          // B
-            }
-            byteBuffer.rewind()
-            byteBuffer to LetterboxParams(scale, dx, dy)
-        } else {
-            val byteBuffer =
-                ByteBuffer.allocateDirect(4 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3)
-                    .order(ByteOrder.nativeOrder())
-            for (pixel in pixels) {
-                byteBuffer.putFloat(((pixel shr 16) and 0xFF) / 255f)
-                byteBuffer.putFloat(((pixel shr 8) and 0xFF) / 255f)
-                byteBuffer.putFloat((pixel and 0xFF) / 255f)
-            }
-            byteBuffer.rewind()
-            byteBuffer to LetterboxParams(scale, dx, dy)
+    private fun preprocess(bitmap: Bitmap): Pair<ByteBuffer, LetterboxParams> {
+        val (pixels, letterbox) = preprocessToPixels(bitmap)
+        val byteBuffer =
+            ByteBuffer.allocateDirect(4 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3)
+                .order(ByteOrder.nativeOrder())
+        for (pixel in pixels) {
+            byteBuffer.putFloat(((pixel shr 16) and 0xFF) / 255f)
+            byteBuffer.putFloat(((pixel shr 8) and 0xFF) / 255f)
+            byteBuffer.putFloat((pixel and 0xFF) / 255f)
         }
+        byteBuffer.rewind()
+        return byteBuffer to letterbox
     }
 
     @VisibleForTesting
@@ -428,14 +526,16 @@ class PoseLandmarkerHelper(
             }
         }
 
-        Log.d(
-            TAG,
-            "Decode RKNN/TFLite output: shape=${outputShape.joinToString("x")}, " +
-                    "channelFirst=$channelFirst, candidateCount=$candidateCount, valuesPerCandidate=$valuesPerCandidate"
-        )
+        if (debugLogging) {
+            Log.d(
+                TAG,
+                "Decode RKNN/TFLite output: shape=${outputShape.joinToString("x")}, " +
+                        "channelFirst=$channelFirst, candidateCount=$candidateCount, valuesPerCandidate=$valuesPerCandidate"
+            )
+        }
 
         // Inspect score channel before thresholding (channel index 4)
-        if (candidateCount > 0 && valuesPerCandidate > 4) {
+        if (debugLogging && candidateCount > 0 && valuesPerCandidate > 4) {
             var minScore = Float.POSITIVE_INFINITY
             var maxScore = Float.NEGATIVE_INFINITY
             val sampleCount = min(20, candidateCount)
@@ -464,7 +564,7 @@ class PoseLandmarkerHelper(
             accepted++
 
             // Log raw data for the first detected pose candidate
-            if (!logged) {
+            if (debugLogging && !logged) {
                 val rawData = (0 until valuesPerCandidate).map { value(i, it) }.joinToString(", ")
                 Log.d(TAG, "--- Begin Raw Candidate Data ---")
                 Log.d(TAG, "Candidate index: $i, Score: ${value(i, 4)} -> ${"%.4f".format(score)}")
@@ -533,16 +633,18 @@ class PoseLandmarkerHelper(
         }
 
         val filtered = applyNms(candidates, minPosePresenceConfidence)
-        Log.d(
-            TAG,
-            "Decode summary: accepted=$accepted, afterNms=${filtered.size}, thresh=$detectionThreshold"
-        )
+        if (debugLogging) {
+            Log.d(
+                TAG,
+                "Decode summary: accepted=$accepted, afterNms=${filtered.size}, thresh=$detectionThreshold"
+            )
+        }
 
         if (accepted == 0 && candidateCount > 0 && valuesPerCandidate > 0) {
             val firstCandidate = (0 until valuesPerCandidate).joinToString(", ") { idx ->
                 "%.3f".format(value(0, idx))
             }
-            Log.d(TAG, "No candidates passed threshold; candidate[0] raw: [$firstCandidate]")
+            if (debugLogging) Log.d(TAG, "No candidates passed threshold; candidate[0] raw: [$firstCandidate]")
         }
         return PoseResult(filtered)
     }
@@ -590,11 +692,11 @@ class PoseLandmarkerHelper(
                 val delegate = GpuDelegate(delegateOptions) // Create GpuDelegate directly
                 gpuDelegate = delegate
                 options.addDelegate(delegate)
-                Log.i(TAG, "使用 GPU delegate 进行推理")
+                if (debugLogging) Log.i(TAG, "使用 GPU delegate 进行推理")
                 true
                 true
             } catch (e: Exception) {
-                Log.w(TAG, "GPU delegate 不可用，尝试回退", e)
+                if (debugLogging) Log.w(TAG, "GPU delegate 不可用，尝试回退", e)
                 false
             }
         }
@@ -602,10 +704,10 @@ class PoseLandmarkerHelper(
         fun tryNnapi(): Boolean {
             return try {
                 options.setUseNNAPI(true)
-                Log.i(TAG, "使用 NNAPI (NPU) delegate 进行推理")
+                if (debugLogging) Log.i(TAG, "使用 NNAPI (NPU) delegate 进行推理")
                 true
             } catch (e: Exception) {
-                Log.w(TAG, "NNAPI delegate 不可用，回退到 CPU", e)
+                if (debugLogging) Log.w(TAG, "NNAPI delegate 不可用，回退到 CPU", e)
                 false
             }
         }

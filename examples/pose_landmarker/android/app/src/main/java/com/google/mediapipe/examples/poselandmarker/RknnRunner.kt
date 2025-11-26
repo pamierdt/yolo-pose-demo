@@ -1,5 +1,6 @@
 package com.google.mediapipe.examples.poselandmarker
 
+import android.graphics.Bitmap
 import java.nio.ByteBuffer
 
 /**
@@ -36,6 +37,14 @@ class RknnRunner(modelBuffer: ByteBuffer) : AutoCloseable {
         return nativeRunPixels(handle, pixels)
     }
 
+    /**
+     * Efficiently runs inference using direct Bitmap access (zero-copy if possible).
+     */
+    fun runBitmapWithNms(bitmap: Bitmap, detectThreshold: Float, nmsThreshold: Float): FloatArray {
+        check(handle != 0L) { "RKNN runtime not initialized" }
+        return nativeRunBitmapWithNms(handle, bitmap, detectThreshold, nmsThreshold)
+    }
+
     override fun close() {
         if (handle != 0L) {
             nativeRelease(handle)
@@ -51,6 +60,7 @@ class RknnRunner(modelBuffer: ByteBuffer) : AutoCloseable {
     private external fun nativeGetOutputShape(handle: Long): IntArray
     private external fun nativeRun(handle: Long, inputBuffer: ByteBuffer, inputSize: Int): FloatArray
     private external fun nativeRunPixels(handle: Long, pixels: IntArray): FloatArray
+    private external fun nativeRunBitmapWithNms(handle: Long, bitmap: Bitmap, detectThresh: Float, nmsThresh: Float): FloatArray
     private external fun nativeRelease(handle: Long)
 
     companion object {

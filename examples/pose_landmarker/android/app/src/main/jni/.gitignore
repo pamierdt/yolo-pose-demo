@@ -1,0 +1,12 @@
+# Generated build outputs from RKNN / CMake that should not be committed
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+3rdparty.out/
+utils.out/
+*.out/
+
+# OS noise
+.DS_Store

@@ -17,8 +17,10 @@ package com.google.mediapipe.examples.poselandmarker.fragment
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.util.Log
+import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,8 +31,8 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Camera
-import androidx.camera.core.AspectRatio
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -44,11 +46,12 @@ import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.jvm.Volatile
 
 class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
     companion object {
-        private const val TAG = "Pose Landmarker"
+        private const val TAG = "YOLO Pose"
     }
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
@@ -63,6 +66,10 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_BACK
+    private val targetResolution = Size(1280, 720)
+    @Volatile private var lastAnalysisResolution: Size? = null
+    @Volatile private var lastAnalysisRotation: Int = 0
+    private var debugLogsRemaining = 5
 
     /** Blocking ML operations are performed using this executor */
     private lateinit var backgroundExecutor: ExecutorService
@@ -253,6 +260,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     p2: Int,
                     p3: Long
                 ) {
+                    viewModel.setModel(p2)
                     poseLandmarkerHelper.currentModel = p2
                     updateControlsUi()
                 }
@@ -319,17 +327,16 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         val cameraProvider = cameraProvider
             ?: throw IllegalStateException("Camera initialization failed.")
 
-        val cameraSelector =
-            CameraSelector.Builder().requireLensFacing(cameraFacing).build()
+        val cameraSelector = selectCamera(cameraProvider)
 
-        // Preview. Only using the 4:3 ratio because this is the closest to our models
-        preview = Preview.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3)
+        // Preview at 720p to match the analyzer resolution
+        preview = Preview.Builder().setTargetResolution(targetResolution)
             .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
             .build()
 
         // ImageAnalysis. Using RGBA 8888 to match how our models work
         imageAnalyzer =
-            ImageAnalysis.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3)
+            ImageAnalysis.Builder().setTargetResolution(targetResolution)
                 .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
@@ -358,7 +365,43 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         }
     }
 
+    private fun selectCamera(provider: ProcessCameraProvider): CameraSelector {
+        val orderedLensFacing = listOf(
+            CameraSelector.LENS_FACING_EXTERNAL,
+            cameraFacing,
+            CameraSelector.LENS_FACING_BACK,
+            CameraSelector.LENS_FACING_FRONT
+        ).distinct()
+
+        for (lens in orderedLensFacing) {
+            try {
+                val selector = CameraSelector.Builder().requireLensFacing(lens).build()
+                if (provider.hasCamera(selector)) {
+                    Log.i(TAG, "Using camera with lens facing = $lens")
+                    return selector
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Camera with lens facing $lens unavailable on this device", e)
+            }
+        }
+
+        val fallbackSelector = provider.availableCameraInfos.firstOrNull()?.let { info ->
+            val lensFacing = Camera2CameraInfo.from(info)
+                .getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+            lensFacing?.let { facing ->
+                Log.i(TAG, "Falling back to first available camera, lens facing = $facing")
+                CameraSelector.Builder().requireLensFacing(facing).build()
+            }
+        }
+
+        return fallbackSelector ?: CameraSelector.DEFAULT_BACK_CAMERA
+    }
+
     private fun detectPose(imageProxy: ImageProxy) {
+        // Cache resolution/rotation for UI-thread logging
+        lastAnalysisResolution = Size(imageProxy.width, imageProxy.height)
+        lastAnalysisRotation = imageProxy.imageInfo.rotationDegrees
+
         if(this::poseLandmarkerHelper.isInitialized) {
             poseLandmarkerHelper.detectLiveStream(
                 imageProxy = imageProxy,
@@ -389,8 +432,29 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     resultBundle.results.first(),
                     resultBundle.inputImageHeight,
                     resultBundle.inputImageWidth,
-                    RunningMode.LIVE_STREAM
+                    RunningMode.LIVE_STREAM,
+                    poseLandmarkerHelper.minPoseTrackingConfidence
                 )
+
+                if (debugLogsRemaining > 0) {
+                    val viewFinderSize = Size(
+                        fragmentCameraBinding.viewFinder.width,
+                        fragmentCameraBinding.viewFinder.height
+                    )
+                    val overlaySize = Size(
+                        fragmentCameraBinding.overlay.width,
+                        fragmentCameraBinding.overlay.height
+                    )
+                    val analysisSize = lastAnalysisResolution
+                    Log.d(
+                        TAG,
+                        "Debug frame ${6 - debugLogsRemaining}: analyzer=${analysisSize?.width}x${analysisSize?.height} " +
+                                "rot=${lastAnalysisRotation}°, inputImage=${resultBundle.inputImageWidth}x${resultBundle.inputImageHeight}, " +
+                                "viewFinder=${viewFinderSize.width}x${viewFinderSize.height}, overlay=${overlaySize.width}x${overlaySize.height}, " +
+                                "targetResolution=${targetResolution.width}x${targetResolution.height}"
+                    )
+                    debugLogsRemaining--
+                }
 
                 // Force a redraw
                 fragmentCameraBinding.overlay.invalidate()
@@ -401,11 +465,6 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     override fun onError(error: String, errorCode: Int) {
         activity?.runOnUiThread {
             Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
-            if (errorCode == PoseLandmarkerHelper.GPU_ERROR) {
-                fragmentCameraBinding.bottomSheetLayout.spinnerDelegate.setSelection(
-                    PoseLandmarkerHelper.DELEGATE_CPU, false
-                )
-            }
         }
     }
 }

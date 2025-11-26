@@ -22,14 +22,14 @@ import androidx.lifecycle.ViewModel
  */
 class MainViewModel : ViewModel() {
 
-    private var _model = PoseLandmarkerHelper.MODEL_POSE_LANDMARKER_FULL
-    private var _delegate: Int = PoseLandmarkerHelper.DELEGATE_CPU
+    private var _model = PoseLandmarkerHelper.MODEL_YOLO11_TFLITE
+    private var _delegate: Int = PoseLandmarkerHelper.DELEGATE_NNAPI
     private var _minPoseDetectionConfidence: Float =
         PoseLandmarkerHelper.DEFAULT_POSE_DETECTION_CONFIDENCE
     private var _minPoseTrackingConfidence: Float = PoseLandmarkerHelper
-        .DEFAULT_POSE_TRACKING_CONFIDENCE
+        .DEFAULT_KEYPOINT_CONFIDENCE
     private var _minPosePresenceConfidence: Float = PoseLandmarkerHelper
-        .DEFAULT_POSE_PRESENCE_CONFIDENCE
+        .DEFAULT_NMS_THRESHOLD
 
     val currentDelegate: Int get() = _delegate
     val currentModel: Int get() = _model

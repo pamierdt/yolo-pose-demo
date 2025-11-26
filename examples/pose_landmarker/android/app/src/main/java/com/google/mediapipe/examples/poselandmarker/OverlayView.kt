@@ -10,7 +10,7 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
+ * See the License for the a specific language governing permissions and
  * limitations under the License.
  */
 package com.google.mediapipe.examples.poselandmarker
@@ -20,24 +20,29 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
-import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlin.math.max
 import kotlin.math.min
 
 class OverlayView(context: Context?, attrs: AttributeSet?) :
     View(context, attrs) {
 
-    private var results: PoseLandmarkerResult? = null
+    private var results: PoseResult? = null
     private var pointPaint = Paint()
     private var linePaint = Paint()
+    private var boxPaint = Paint()
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
     private var imageHeight: Int = 1
+    private var imageTranslateX: Float = 0f
+    private var imageTranslateY: Float = 0f
+    private var minKeypointScore: Float = PoseLandmarkerHelper.DEFAULT_KEYPOINT_CONFIDENCE
+    private var debugLogsRemaining = 3
+    private var lastLogSignature: String? = null
 
     init {
         initPaints()
@@ -47,6 +52,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         results = null
         pointPaint.reset()
         linePaint.reset()
+        boxPaint.reset()
         invalidate()
         initPaints()
     }
@@ -60,42 +66,64 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         pointPaint.color = Color.YELLOW
         pointPaint.strokeWidth = LANDMARK_STROKE_WIDTH
         pointPaint.style = Paint.Style.FILL
+
+        boxPaint.color = Color.argb(120, 3, 169, 244)
+        boxPaint.strokeWidth = LANDMARK_STROKE_WIDTH / 2
+        boxPaint.style = Paint.Style.STROKE
     }
 
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
-        results?.let { poseLandmarkerResult ->
-            for(landmark in poseLandmarkerResult.landmarks()) {
-                for(normalizedLandmark in landmark) {
+        results?.poses?.forEach { pose ->
+            pose.keypoints.forEach { keypoint ->
+                if (keypoint.score >= minKeypointScore) {
                     canvas.drawPoint(
-                        normalizedLandmark.x() * imageWidth * scaleFactor,
-                        normalizedLandmark.y() * imageHeight * scaleFactor,
+                        keypoint.x * imageWidth * scaleFactor + imageTranslateX,
+                        keypoint.y * imageHeight * scaleFactor + imageTranslateY,
                         pointPaint
                     )
                 }
+            }
 
-                PoseLandmarker.POSE_LANDMARKS.forEach {
+            KEYPOINT_CONNECTIONS.forEach { (start, end) ->
+                val startKp = pose.keypoints.getOrNull(start)
+                val endKp = pose.keypoints.getOrNull(end)
+                if (startKp != null && endKp != null &&
+                    startKp.score >= minKeypointScore &&
+                    endKp.score >= minKeypointScore
+                ) {
                     canvas.drawLine(
-                        poseLandmarkerResult.landmarks().get(0).get(it!!.start()).x() * imageWidth * scaleFactor,
-                        poseLandmarkerResult.landmarks().get(0).get(it.start()).y() * imageHeight * scaleFactor,
-                        poseLandmarkerResult.landmarks().get(0).get(it.end()).x() * imageWidth * scaleFactor,
-                        poseLandmarkerResult.landmarks().get(0).get(it.end()).y() * imageHeight * scaleFactor,
-                        linePaint)
+                        startKp.x * imageWidth * scaleFactor + imageTranslateX,
+                        startKp.y * imageHeight * scaleFactor + imageTranslateY,
+                        endKp.x * imageWidth * scaleFactor + imageTranslateX,
+                        endKp.y * imageHeight * scaleFactor + imageTranslateY,
+                        linePaint
+                    )
                 }
             }
+
+            canvas.drawRect(
+                pose.boundingBox.left * imageWidth * scaleFactor + imageTranslateX,
+                pose.boundingBox.top * imageHeight * scaleFactor + imageTranslateY,
+                pose.boundingBox.right * imageWidth * scaleFactor + imageTranslateX,
+                pose.boundingBox.bottom * imageHeight * scaleFactor + imageTranslateY,
+                boxPaint
+            )
         }
     }
 
     fun setResults(
-        poseLandmarkerResults: PoseLandmarkerResult,
+        poseLandmarkerResults: PoseResult,
         imageHeight: Int,
         imageWidth: Int,
-        runningMode: RunningMode = RunningMode.IMAGE
+        runningMode: RunningMode = RunningMode.IMAGE,
+        keypointScoreThreshold: Float = PoseLandmarkerHelper.DEFAULT_KEYPOINT_CONFIDENCE
     ) {
         results = poseLandmarkerResults
 
         this.imageHeight = imageHeight
         this.imageWidth = imageWidth
+        this.minKeypointScore = keypointScoreThreshold
 
         scaleFactor = when (runningMode) {
             RunningMode.IMAGE,
@@ -109,10 +137,44 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
                 max(width * 1f / imageWidth, height * 1f / imageHeight)
             }
         }
+
+        val scaledWidth = imageWidth * scaleFactor
+        val scaledHeight = imageHeight * scaleFactor
+
+        if (runningMode == RunningMode.LIVE_STREAM) {
+            // PreviewView fillStart anchors the image at top/left, so we keep translations at 0
+            imageTranslateX = 0f
+            imageTranslateY = 0f
+        } else {
+            imageTranslateX = (width - scaledWidth) / 2f
+            imageTranslateY = (height - scaledHeight) / 2f
+        }
+
+        if (debugLogsRemaining > 0) {
+            val signature = "$runningMode-$width-$height-$imageWidth-$imageHeight-$scaleFactor-$imageTranslateX-$imageTranslateY"
+            if (signature != lastLogSignature) {
+                Log.d(
+                    TAG,
+                    "Overlay scale: mode=$runningMode view=${width}x$height image=${imageWidth}x$imageHeight " +
+                            "scale=${"%.4f".format(scaleFactor)} scaled=${scaledWidth.toInt()}x${scaledHeight.toInt()} " +
+                            "translate=(${imageTranslateX.toInt()},${imageTranslateY.toInt()})"
+                )
+                lastLogSignature = signature
+                debugLogsRemaining--
+            }
+        }
+
         invalidate()
     }
 
     companion object {
+        private const val TAG = "OverlayView"
         private const val LANDMARK_STROKE_WIDTH = 12F
+        private val KEYPOINT_CONNECTIONS = listOf(
+            0 to 1, 0 to 2, 1 to 3, 2 to 4,
+            0 to 5, 0 to 6, 5 to 7, 7 to 9, 6 to 8, 8 to 10,
+            5 to 6, 5 to 11, 6 to 12, 11 to 12, 11 to 13,
+            13 to 15, 12 to 14, 14 to 16
+        )
     }
 }

@@ -1,10 +1,10 @@
-# MediaPipe Tasks Pose Landmark Detection Android Demo
+# YOLO Pose Landmark Android Demo
 
 ### Overview
 
-This is a camera app that can detects landmarks on a person either from continuous camera frames seen by your device's back camera, an image, or a video from the device's gallery using a custom **task** file.
+This is a camera app that can detects landmarks on a person either from continuous camera frames seen by your device's back camera, an image, or a video from the device's gallery using a YOLO pose **.tflite** model.
 
-The task file is downloaded by a Gradle script when you build and run the app. You don't need to do any additional steps to download task files into the project explicitly unless you wish to use your own landmark detection task. If you do use your own task file, place it into the app's *assets* directory.
+Place your YOLO pose model (for example, a `yolov8n-pose.tflite` export) into the app's *assets* directory and name it `yolo_pose.tflite` (or update the constant in `PoseLandmarkerHelper`). The Gradle script now only checks for the file and will print a warning if it is missing.
 
 This application should be run on a physical Android device to take advantage of the camera.
 
@@ -37,5 +37,9 @@ This application should be run on a physical Android device to take advantage of
 
 ### Models used
 
-Downloading, extraction, and placing the models into the *assets* folder is
-managed automatically by the **download.gradle** file.
+For Rockchip boards place the converted model `yolo11n-pose.rknn` under
+`app/src/main/assets` (or push it to `/sdcard/Download/` or
+`/data/local/tmp/`). The helper still keeps the TFLite pipeline, so make sure
+the file is either a compatible TFLite flatbuffer or provide an RKNN runtime
+implementation alongside the model. The Gradle task `verifyYoloModel` just
+emits a warning if the file is missing; no automatic downloads are performed.

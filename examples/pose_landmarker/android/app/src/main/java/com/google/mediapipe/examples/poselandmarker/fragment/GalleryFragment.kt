@@ -213,6 +213,7 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     p2: Int,
                     p3: Long
                 ) {
+                    viewModel.setModel(p2)
                     poseLandmarkerHelper.currentModel = p2
                     updateControlsUi()
                 }
@@ -288,7 +289,8 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                                 result.results[0],
                                 bitmap.height,
                                 bitmap.width,
-                                RunningMode.IMAGE
+                                RunningMode.IMAGE,
+                                viewModel.currentMinPoseTrackingConfidence
                             )
 
                             setUiEnabled(true)
@@ -366,7 +368,8 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                             result.results[resultIndex],
                             result.inputImageHeight,
                             result.inputImageWidth,
-                            RunningMode.VIDEO
+                            RunningMode.VIDEO,
+                            viewModel.currentMinPoseTrackingConfidence
                         )
 
                         setUiEnabled(true)
@@ -432,12 +435,6 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         classifyingError()
         activity?.runOnUiThread {
             Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
-            if (errorCode == PoseLandmarkerHelper.GPU_ERROR) {
-                fragmentGalleryBinding.bottomSheetLayout.spinnerDelegate.setSelection(
-                    PoseLandmarkerHelper.DELEGATE_CPU,
-                    false
-                )
-            }
         }
     }
 

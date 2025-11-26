@@ -753,7 +753,7 @@ class PoseLandmarkerHelper(
         const val DEFAULT_POSE_DETECTION_CONFIDENCE = 0.6F
         const val DEFAULT_KEYPOINT_CONFIDENCE = 0.5F
         const val DEFAULT_NMS_THRESHOLD = 0.5F
-        const val MODEL_INPUT_SIZE = 640
+        const val MODEL_INPUT_SIZE = 320
 
         const val MODEL_YOLO8_TFLITE = 0
         const val MODEL_YOLO8_RKNN = 1

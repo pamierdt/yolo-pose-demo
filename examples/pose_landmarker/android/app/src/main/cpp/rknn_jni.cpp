@@ -146,6 +146,158 @@ void NMS(std::vector<Pose>& poses, float iou_threshold) {
 
 }  // namespace
 
+class KalmanFilter1D {
+public:
+    KalmanFilter1D(float q_pos, float q_vel, float r_meas) : qp(q_pos), qv(q_vel), r(r_meas) {
+        x0 = 0.f; x1 = 0.f;
+        p00 = 1.f; p01 = 0.f; p10 = 0.f; p11 = 1.f;
+    }
+    void reset(float x_init=0.f, float v_init=0.f) {
+        x0 = x_init; x1 = v_init;
+        p00 = 1.f; p01 = 0.f; p10 = 0.f; p11 = 1.f;
+    }
+    float update(float z, float dt) {
+        float a00 = 1.f; float a01 = dt; float a10 = 0.f; float a11 = 1.f;
+        float x0p = a00 * x0 + a01 * x1;
+        float x1p = a10 * x0 + a11 * x1;
+        float q00 = qp * dt; float q11 = qv * dt;
+        float p00p = a00*p00 + a01*p10; float p01p = a00*p01 + a01*p11;
+        float p10p = a10*p00 + a11*p10; float p11p = a10*p01 + a11*p11;
+        float p00pp = p00p*a00 + p01p*a10 + q00;
+        float p01pp = p00p*a01 + p01p*a11;
+        float p10pp = p10p*a00 + p11p*a10;
+        float p11pp = p10p*a01 + p11p*a11 + q11;
+        float s = p00pp + r;
+        float k0 = p00pp / s;
+        float k1 = p10pp / s;
+        float y = z - x0p;
+        x0 = x0p + k0 * y;
+        x1 = x1p + k1 * y;
+        float i00 = 1.f - k0; float i01 = 0.f; float i10 = -k1; float i11 = 1.f;
+        float np00 = i00*p00pp + i01*p10pp;
+        float np01 = i00*p01pp + i01*p11pp;
+        float np10 = i10*p00pp + i11*p10pp;
+        float np11 = i10*p01pp + i11*p11pp;
+        p00 = np00; p01 = np01; p10 = np10; p11 = np11;
+        return x0;
+    }
+    float position() const { return x0; }
+    float velocity() const { return x1; }
+private:
+    float x0, x1;
+    float p00, p01, p10, p11;
+    float qp, qv, r;
+};
+
+class JumpRopeCounter {
+public:
+    JumpRopeCounter(float q_pos, float q_vel, float r_meas, float alpha, float threshold, float minIntervalMs)
+        : kf(q_pos, q_vel, r_meas), emaAlpha(alpha), thr(threshold), minInterval(minIntervalMs) {
+        kf.reset(0.f, 0.f);
+        ema = 0.f;
+        count = 0;
+        state = 0;
+        tms = 0.0;
+        lastEventMs = -1.0;
+    }
+    void reset() {
+        kf.reset(0.f, 0.f);
+        ema = 0.f;
+        count = 0;
+        state = 0;
+        tms = 0.0;
+        lastEventMs = -1.0;
+    }
+    int update(float measurement, float dtMs) {
+        float dt = dtMs * 0.001f;
+        float x = kf.update(measurement, dt);
+        if (tms == 0.0) ema = x; else ema = emaAlpha * x + (1.f - emaAlpha) * ema;
+        float low = ema - thr;
+        float high = ema + thr;
+        tms += dtMs;
+        if (state == 0) {
+            if (x <= low) { state = 1; lastEventMs = tms; }
+        } else {
+            if (x >= high) {
+                if (lastEventMs < 0.0 || (tms - lastEventMs) >= minInterval) {
+                    count += 1;
+                    lastEventMs = tms;
+                }
+                state = 0;
+            }
+        }
+        return count;
+    }
+    int getCount() const { return count; }
+    float getFiltered() const { return kf.position(); }
+private:
+    KalmanFilter1D kf;
+    float emaAlpha;
+    float thr;
+    float ema;
+    float minInterval;
+    int state;
+    int count;
+    double tms;
+    double lastEventMs;
+};
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeCreate(
+    JNIEnv* env, jobject, jfloat q_pos, jfloat q_vel, jfloat r_meas, jfloat alpha, jfloat threshold, jfloat minIntervalMs) {
+  auto* obj = new JumpRopeCounter(q_pos, q_vel, r_meas, alpha, threshold, minIntervalMs);
+  return reinterpret_cast<jlong>(obj);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeReset(
+    JNIEnv* env, jobject, jlong handle) {
+  auto* obj = reinterpret_cast<JumpRopeCounter*>(handle);
+  if (!obj) return;
+  obj->reset();
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeUpdate(
+    JNIEnv* env, jobject, jlong handle, jfloat measurement, jfloat dtMs) {
+  auto* obj = reinterpret_cast<JumpRopeCounter*>(handle);
+  if (!obj) {
+    ThrowIllegalState(env, "JumpRopeCounter handle is null");
+    return 0;
+  }
+  return static_cast<jint>(obj->update(measurement, dtMs));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetCount(
+    JNIEnv* env, jobject, jlong handle) {
+  auto* obj = reinterpret_cast<JumpRopeCounter*>(handle);
+  if (!obj) {
+    ThrowIllegalState(env, "JumpRopeCounter handle is null");
+    return 0;
+  }
+  return static_cast<jint>(obj->getCount());
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetFiltered(
+    JNIEnv* env, jobject, jlong handle) {
+  auto* obj = reinterpret_cast<JumpRopeCounter*>(handle);
+  if (!obj) {
+    ThrowIllegalState(env, "JumpRopeCounter handle is null");
+    return 0.f;
+  }
+  return static_cast<jfloat>(obj->getFiltered());
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeRelease(
+    JNIEnv* env, jobject, jlong handle) {
+  auto* obj = reinterpret_cast<JumpRopeCounter*>(handle);
+  if (!obj) return;
+  delete obj;
+}
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeInit(
     JNIEnv* env, jobject /*thiz*/, jobject model_buffer, jint model_size) {

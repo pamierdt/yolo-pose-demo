@@ -435,6 +435,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     RunningMode.LIVE_STREAM,
                     poseLandmarkerHelper.minPoseTrackingConfidence
                 )
+                fragmentCameraBinding.overlay.setCounter(poseLandmarkerHelper.currentRopeCount())
 
                 if (debugLogsRemaining > 0) {
                     val viewFinderSize = Size(

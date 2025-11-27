@@ -51,6 +51,9 @@ class PoseLandmarkerHelper(
     private var inputBitmap: Bitmap? = null
     private var pixelBuffer: IntArray? = null
     private var debugLogging: Boolean = false
+    private var ropeCounter: JumpRopeCounter? = null
+    private var lastCounterTs: Long = 0L
+    private var lastRopeCount: Int = 0
 
     init {
         setupPoseLandmarker()
@@ -104,6 +107,9 @@ class PoseLandmarkerHelper(
             try {
                 rknnRunner = RknnRunner(model)
                 Log.i(TAG, "Initialized RKNN runtime for $modelName")
+                if (ropeCounter == null) {
+                    ropeCounter = JumpRopeCounter()
+                }
                 return
             } catch (e: Exception) {
                 poseLandmarkerHelperListener?.onError(
@@ -116,6 +122,9 @@ class PoseLandmarkerHelper(
         val options = buildInterpreterOptions()
         try {
             interpreter = Interpreter(model, options)
+            if (ropeCounter == null) {
+                ropeCounter = JumpRopeCounter()
+            }
         } catch (e: IllegalArgumentException) {
             poseLandmarkerHelperListener?.onError(
                 "模型格式不受支持，请检查 $modelName。"
@@ -182,6 +191,12 @@ class PoseLandmarkerHelper(
             val displayWidth = if (rotation == 90 || rotation == 270) bitmapBuffer.height else bitmapBuffer.width
             val displayHeight = if (rotation == 90 || rotation == 270) bitmapBuffer.width else bitmapBuffer.height
             if (debugLogging) Log.d(TAG, "Live result: poses=${(transformed?.poses ?: result.results.firstOrNull()?.poses ?: emptyList()).size} disp=${displayWidth}x${displayHeight}")
+
+            val now = SystemClock.uptimeMillis()
+            val dt = if (lastCounterTs == 0L) 0f else (now - lastCounterTs).toFloat()
+            lastCounterTs = now
+            val poses = transformed?.poses ?: result.results.firstOrNull()?.poses ?: emptyList()
+            val count = updateCounterFromPoses(poses, dt)
             poseLandmarkerHelperListener?.onResults(
                 result.copy(
                     results = transformed?.let { listOf(it) } ?: result.results,
@@ -191,6 +206,38 @@ class PoseLandmarkerHelper(
                 )
             )
         } ?: poseLandmarkerHelperListener?.onError("YOLO pose 推理失败")
+    }
+
+    fun currentRopeCount(): Int = ropeCounter?.getCount() ?: 0
+
+    private fun updateCounterFromPoses(poses: List<Pose>, dtMs: Float): Int {
+        val rc = ropeCounter ?: return 0
+        if (poses.isEmpty()) return rc.getCount()
+        val p = poses.first()
+        val left = p.keypoints.getOrNull(9)
+        val right = p.keypoints.getOrNull(10)
+        val minScore = minPoseTrackingConfidence
+        val kp = when {
+            left != null && right != null -> if (left.score >= right.score) left else right
+            left != null -> left
+            right != null -> right
+            else -> null
+        }
+        if (kp != null && kp.score >= minScore) {
+            val meas = kp.y
+            val side = if (kp === left) "L" else "R"
+            val newCount = rc.update(meas, dtMs)
+            val filtered = rc.getFiltered()
+            if (debugLogging) {
+                android.util.Log.d(
+                    TAG,
+                    "Rope: side=$side y=${"%.3f".format(meas)} score=${"%.2f".format(kp.score)} dt=${"%.1f".format(dtMs)} filtered=${"%.3f".format(filtered)} count=$newCount${if (newCount > lastRopeCount) " +1" else ""}"
+                )
+            }
+            lastRopeCount = newCount
+            return newCount
+        }
+        return rc.getCount()
     }
 
     private fun transformForDisplay(src: PoseResult, rotation: Int, mirror: Boolean): PoseResult {

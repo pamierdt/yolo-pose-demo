@@ -34,6 +34,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var pointPaint = Paint()
     private var linePaint = Paint()
     private var boxPaint = Paint()
+    private var textPaint = Paint()
 
     private var scaleFactor: Float = 1f
     private var imageWidth: Int = 1
@@ -43,6 +44,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var minKeypointScore: Float = PoseLandmarkerHelper.DEFAULT_KEYPOINT_CONFIDENCE
     private var debugLogsRemaining = 3
     private var lastLogSignature: String? = null
+    private var counter: Int = 0
 
     init {
         initPaints()
@@ -70,6 +72,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         boxPaint.color = Color.argb(120, 3, 169, 244)
         boxPaint.strokeWidth = LANDMARK_STROKE_WIDTH / 2
         boxPaint.style = Paint.Style.STROKE
+        textPaint.color = Color.RED
+        textPaint.textSize = 48f
+        textPaint.isAntiAlias = true
+        textPaint.textAlign = Paint.Align.CENTER
     }
 
     override fun draw(canvas: Canvas) {
@@ -109,6 +115,12 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
                 pose.boundingBox.bottom * imageHeight * scaleFactor + imageTranslateY,
                 boxPaint
             )
+        }
+        if (counter > 0) {
+            val fm = textPaint.fontMetrics
+            val cx = width * 1f / 2f
+            val cy = height * 1f / 2f - (fm.ascent + fm.descent) / 2f
+            canvas.drawText("Count: $counter", cx, cy, textPaint)
         }
     }
 
@@ -158,6 +170,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
             }
         }
 
+        invalidate()
+    }
+
+    fun setCounter(value: Int) {
+        counter = value
         invalidate()
     }
 

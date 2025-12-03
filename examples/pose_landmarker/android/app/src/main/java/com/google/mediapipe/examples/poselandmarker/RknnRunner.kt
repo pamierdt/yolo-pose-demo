@@ -65,9 +65,7 @@ class RknnRunner(modelBuffer: ByteBuffer) : AutoCloseable {
 
     companion object {
         init {
-            // rknn_jni depends on librknnrt, ensure runtime is loaded first.
-            System.loadLibrary("rknnrt")
-            System.loadLibrary("rknn_jni")
+            NativeLibLoader.ensureLoaded()
         }
     }
 }

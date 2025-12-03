@@ -11,6 +11,7 @@ add_library(
     rknn_jni
     SHARED
     rknn_jni.cpp
+    JumpRopeCounter.cpp
 )
 
 add_library(rknnrt SHARED IMPORTED)

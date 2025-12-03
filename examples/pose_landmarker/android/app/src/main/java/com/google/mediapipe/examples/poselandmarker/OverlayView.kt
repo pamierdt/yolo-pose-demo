@@ -44,7 +44,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
     private var minKeypointScore: Float = PoseLandmarkerHelper.DEFAULT_KEYPOINT_CONFIDENCE
     private var debugLogsRemaining = 3
     private var lastLogSignature: String? = null
-    private var counter: Int = 0
+
 
     init {
         initPaints()
@@ -80,7 +80,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
 
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
-        results?.poses?.forEach { pose ->
+        results?.poses?.forEachIndexed { index, pose ->
             pose.keypoints.forEach { keypoint ->
                 if (keypoint.score >= minKeypointScore) {
                     canvas.drawPoint(
@@ -108,19 +108,31 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
                 }
             }
 
-            canvas.drawRect(
-                pose.boundingBox.left * imageWidth * scaleFactor + imageTranslateX,
-                pose.boundingBox.top * imageHeight * scaleFactor + imageTranslateY,
-                pose.boundingBox.right * imageWidth * scaleFactor + imageTranslateX,
-                pose.boundingBox.bottom * imageHeight * scaleFactor + imageTranslateY,
-                boxPaint
-            )
-        }
-        if (counter > 0) {
-            val fm = textPaint.fontMetrics
-            val cx = width * 1f / 2f
-            val cy = height * 1f / 2f - (fm.ascent + fm.descent) / 2f
-            canvas.drawText("Count: $counter", cx, cy, textPaint)
+            val boxLeft = pose.boundingBox.left * imageWidth * scaleFactor + imageTranslateX
+            val boxTop = pose.boundingBox.top * imageHeight * scaleFactor + imageTranslateY
+            val boxRight = pose.boundingBox.right * imageWidth * scaleFactor + imageTranslateX
+            val boxBottom = pose.boundingBox.bottom * imageHeight * scaleFactor + imageTranslateY
+
+            canvas.drawRect(boxLeft, boxTop, boxRight, boxBottom, boxPaint)
+
+            val poseId = pose.id.takeIf { it > 0 } ?: index + 1
+            val labelX = boxLeft + LANDMARK_STROKE_WIDTH
+            val labelY = max(boxTop + textPaint.textSize, textPaint.textSize)
+            val previousAlign = textPaint.textAlign
+            textPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText("ID $poseId", labelX, labelY, textPaint)
+            textPaint.textAlign = previousAlign
+
+            // Draw counter for each pose
+            if (pose.jumpCount > 0) {
+                val cx = (boxLeft + boxRight) / 2f
+                val cy = (boxTop + boxBottom) / 2f
+                
+                val fm = textPaint.fontMetrics
+                val textY = cy - (fm.ascent + fm.descent) / 2f
+                
+                canvas.drawText("Count: ${pose.jumpCount}", cx, textY, textPaint)
+            }
         }
     }
 
@@ -173,10 +185,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         invalidate()
     }
 
-    fun setCounter(value: Int) {
-        counter = value
-        invalidate()
-    }
+
 
     companion object {
         private const val TAG = "OverlayView"

@@ -66,7 +66,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_BACK
-    private val targetResolution = Size(640, 640)
+    private val targetResolution = Size(960, 640)
     @Volatile private var lastAnalysisResolution: Size? = null
     @Volatile private var lastAnalysisRotation: Int = 0
     private var debugLogsRemaining = 5
@@ -152,6 +152,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 minPoseTrackingConfidence = viewModel.currentMinPoseTrackingConfidence,
                 minPosePresenceConfidence = viewModel.currentMinPosePresenceConfidence,
                 currentDelegate = viewModel.currentDelegate,
+                currentModel = viewModel.currentModel,
                 poseLandmarkerHelperListener = this
             )
         }
@@ -426,6 +427,8 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             if (_fragmentCameraBinding != null) {
                 fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal.text =
                     String.format("%d ms", resultBundle.inferenceTime)
+                fragmentCameraBinding.bottomSheetLayout.algorithmTimeVal.text =
+                    String.format("%d ms", resultBundle.algorithmTime)
 
                 // Pass necessary information to OverlayView for drawing on the canvas
                 fragmentCameraBinding.overlay.setResults(
@@ -435,7 +438,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     RunningMode.LIVE_STREAM,
                     poseLandmarkerHelper.minPoseTrackingConfidence
                 )
-                fragmentCameraBinding.overlay.setCounter(poseLandmarkerHelper.currentRopeCount())
+
 
                 if (debugLogsRemaining > 0) {
                     val viewFinderSize = Size(

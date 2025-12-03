@@ -1,24 +1,19 @@
 package com.google.mediapipe.examples.poselandmarker
 
 class JumpRopeCounter(
-    qPos: Float = 1e-3f,
-    qVel: Float = 1e-3f,
-    rMeas: Float = 1e-2f,
-    alpha: Float = 0.2f,
-    threshold: Float = 0.1f,
     minIntervalMs: Float = 300f
 ) : AutoCloseable {
 
     private var handle: Long = 0
 
     init {
-        handle = nativeCreate(qPos, qVel, rMeas, alpha, threshold, minIntervalMs)
+        handle = nativeCreate(minIntervalMs)
         if (handle == 0L) throw IllegalStateException("Failed to create JumpRopeCounter")
     }
 
-    fun update(measurement: Float, dtMs: Float): Int {
+    fun update(shoulderY: Float, hipY: Float, ankleY: Float, timestampMs: Double): Int {
         check(handle != 0L)
-        return nativeUpdate(handle, measurement, dtMs)
+        return nativeUpdate(handle, shoulderY, hipY, ankleY, timestampMs)
     }
 
     fun getCount(): Int {
@@ -26,9 +21,14 @@ class JumpRopeCounter(
         return nativeGetCount(handle)
     }
 
-    fun getFiltered(): Float {
+    fun getGroundY(): Float {
         check(handle != 0L)
-        return nativeGetFiltered(handle)
+        return nativeGetGroundY(handle)
+    }
+
+    fun getState(): Int {
+        check(handle != 0L)
+        return nativeGetState(handle)
     }
 
     fun reset() {
@@ -47,16 +47,17 @@ class JumpRopeCounter(
         close()
     }
 
-    private external fun nativeCreate(qPos: Float, qVel: Float, rMeas: Float, alpha: Float, threshold: Float, minIntervalMs: Float): Long
-    private external fun nativeUpdate(handle: Long, measurement: Float, dtMs: Float): Int
+    private external fun nativeCreate(minIntervalMs: Float): Long
+    private external fun nativeUpdate(handle: Long, shoulderY: Float, hipY: Float, ankleY: Float, timestampMs: Double): Int
     private external fun nativeGetCount(handle: Long): Int
-    private external fun nativeGetFiltered(handle: Long): Float
+    private external fun nativeGetGroundY(handle: Long): Float
+    private external fun nativeGetState(handle: Long): Int
     private external fun nativeReset(handle: Long)
     private external fun nativeRelease(handle: Long)
 
     companion object {
         init {
-            System.loadLibrary("rknn_jni")
+            NativeLibLoader.ensureLoaded()
         }
     }
 }

@@ -62,6 +62,10 @@ class PoseLandmarkerHelper(
     private var lastCounterTs: Long = 0L
     private var lastRopeCount: Int = 0
 
+    // Perf toggles exposed in UI
+    var useQuantOutput: Boolean = false
+    var cacheableInput: Boolean = true
+
     init {
         setupPoseLandmarker()
     }
@@ -113,6 +117,7 @@ class PoseLandmarkerHelper(
         if (isRknn) {
             try {
                 rknnRunner = RknnRunner(model)
+                rknnRunner?.setPerfOptions(useQuantOutput, cacheableInput)
                 Log.i(TAG, "Initialized RKNN runtime for $modelName")
                 return
             } catch (e: Exception) {
@@ -138,6 +143,12 @@ class PoseLandmarkerHelper(
             )
             Log.e(TAG, "Interpreter init failed", e)
         }
+    }
+
+    fun setPerfOptions(useQuant: Boolean, cacheable: Boolean) {
+        useQuantOutput = useQuant
+        cacheableInput = cacheable
+        rknnRunner?.setPerfOptions(useQuant, cacheable)
     }
 
     private fun loadModelFile(modelName: String): ByteBuffer {
@@ -517,43 +528,69 @@ class PoseLandmarkerHelper(
     @VisibleForTesting
     fun runPoseEstimation(bitmap: Bitmap, validWidth: Int = bitmap.width, validHeight: Int = bitmap.height): ResultBundle? {
         val startTime = SystemClock.uptimeMillis()
-        
+
         // If RKNN runner is available, use the optimized path with C++ NMS
         if (rknnRunner != null) {
             val runner = rknnRunner!!
             val t0 = SystemClock.uptimeMillis()
             val (inputBitmap, letterbox) = preprocessToBitmap(bitmap, validWidth, validHeight)
-            
+
             // Use new native method with built-in NMS and direct Bitmap access
             val t1 = SystemClock.uptimeMillis()
             val serializedOutput = runner.runBitmapWithNms(
-                inputBitmap, 
-                minPoseDetectionConfidence, 
+                inputBitmap,
+                minPoseDetectionConfidence,
                 minPosePresenceConfidence
             )
             val t2 = SystemClock.uptimeMillis()
-            val inferenceTime = SystemClock.uptimeMillis() - startTime
             val poseResult = parseSerializedOutput(serializedOutput, letterbox, validWidth, validHeight)
             val t3 = SystemClock.uptimeMillis()
-            if (debugLogging) Log.d(TAG, "Kotlin Profile: Letterbox=${t1 - t0} ms, Native=${t2 - t1} ms, Parse=${t3 - t2} ms, Total=${t3 - t0} ms")
+            val preprocessMs = t1 - t0
+            val nativeMs = t2 - t1
+            val postMs = t3 - t2
+            val totalMs = t3 - t0
+            if (debugLogging) Log.d(TAG, "Kotlin Profile: Letterbox=${preprocessMs} ms, Native=${nativeMs} ms, Parse=${postMs} ms, Total=${totalMs} ms")
             if (debugLogging) Log.d(TAG, "RKNN Pose decoded: poses=${poseResult.poses.size}")
-            return ResultBundle(listOf(poseResult), inferenceTime, validHeight, validWidth)
+            return ResultBundle(
+                listOf(poseResult),
+                totalMs,
+                validHeight,
+                validWidth,
+                algorithmTime = nativeMs,
+                preprocessTime = preprocessMs,
+                nativeTime = nativeMs,
+                postProcessTime = postMs
+            )
         }
 
         // TFLite fallback path
         val localInterpreter = interpreter ?: return null
+        val t0 = SystemClock.uptimeMillis()
         val (inputBuffer, letterbox) = preprocess(bitmap, validWidth, validHeight)
+        val t1 = SystemClock.uptimeMillis()
         val outputShapeLocal = localInterpreter.getOutputTensor(0).shape()
         val outputSize = outputShapeLocal.fold(1) { acc, i -> acc * i }
         val outputBuffer = ByteBuffer.allocateDirect(4 * outputSize).order(ByteOrder.nativeOrder())
         localInterpreter.run(inputBuffer, outputBuffer)
+        val t2 = SystemClock.uptimeMillis()
         val floatArrayLocal = FloatArray(outputSize)
         outputBuffer.rewind()
         outputBuffer.asFloatBuffer().get(floatArrayLocal)
-        
-        val inferenceTime = SystemClock.uptimeMillis() - startTime
         val poseResult = decodeOutputs(floatArrayLocal, outputShapeLocal, letterbox, validWidth, validHeight)
-        return ResultBundle(listOf(poseResult), inferenceTime, validHeight, validWidth)
+        val t3 = SystemClock.uptimeMillis()
+        val preprocessMs = t1 - t0
+        val nativeMs = t2 - t1
+        val postMs = t3 - t2
+        return ResultBundle(
+            listOf(poseResult),
+            t3 - startTime,
+            validHeight,
+            validWidth,
+            algorithmTime = nativeMs,
+            preprocessTime = preprocessMs,
+            nativeTime = nativeMs,
+            postProcessTime = postMs
+        )
     }
     
     private fun parseSerializedOutput(
@@ -984,7 +1021,10 @@ class PoseLandmarkerHelper(
         val inferenceTime: Long,
         val inputImageHeight: Int,
         val inputImageWidth: Int,
-        val algorithmTime: Long = 0L
+        val algorithmTime: Long = 0L,
+        val preprocessTime: Long = 0L,
+        val nativeTime: Long = 0L,
+        val postProcessTime: Long = 0L
     )
 
     interface LandmarkerListener {

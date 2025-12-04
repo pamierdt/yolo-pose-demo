@@ -42,6 +42,8 @@
     <string name="label_num_poses">Number of Poses</string>
     <string name="label_delegate">Delegate</string>
     <string name="label_models">Model</string>
+    <string name="label_quant_output">Use Quantized Output (fast)</string>
+    <string name="label_cacheable_input">Cacheable Input Buffer</string>
 
     <string-array name="delegate_spinner_titles">
         <item>GPU</item>

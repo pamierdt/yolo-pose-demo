@@ -45,6 +45,10 @@ class RknnRunner(modelBuffer: ByteBuffer) : AutoCloseable {
         return nativeRunBitmapWithNms(handle, bitmap, detectThreshold, nmsThreshold)
     }
 
+    fun setPerfOptions(useQuantOutput: Boolean, cacheableInput: Boolean) {
+        nativeSetPerfOptions(useQuantOutput, cacheableInput)
+    }
+
     override fun close() {
         if (handle != 0L) {
             nativeRelease(handle)
@@ -61,6 +65,7 @@ class RknnRunner(modelBuffer: ByteBuffer) : AutoCloseable {
     private external fun nativeRun(handle: Long, inputBuffer: ByteBuffer, inputSize: Int): FloatArray
     private external fun nativeRunPixels(handle: Long, pixels: IntArray): FloatArray
     private external fun nativeRunBitmapWithNms(handle: Long, bitmap: Bitmap, detectThresh: Float, nmsThresh: Float): FloatArray
+    private external fun nativeSetPerfOptions(useQuantOutput: Boolean, cacheableInput: Boolean)
     private external fun nativeRelease(handle: Long)
 
     companion object {

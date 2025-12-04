@@ -30,6 +30,8 @@ class MainViewModel : ViewModel() {
         .DEFAULT_KEYPOINT_CONFIDENCE
     private var _minPosePresenceConfidence: Float = PoseLandmarkerHelper
         .DEFAULT_NMS_THRESHOLD
+    private var _useQuantOutput: Boolean = false
+    private var _cacheableInput: Boolean = true
 
     val currentDelegate: Int get() = _delegate
     val currentModel: Int get() = _model
@@ -42,6 +44,8 @@ class MainViewModel : ViewModel() {
     val currentMinPosePresenceConfidence: Float
         get() =
             _minPosePresenceConfidence
+    val currentUseQuantOutput: Boolean get() = _useQuantOutput
+    val currentCacheableInput: Boolean get() = _cacheableInput
 
     fun setDelegate(delegate: Int) {
         _delegate = delegate
@@ -61,5 +65,13 @@ class MainViewModel : ViewModel() {
 
     fun setModel(model: Int) {
         _model = model
+    }
+
+    fun setUseQuantOutput(useQuantOutput: Boolean) {
+        _useQuantOutput = useQuantOutput
+    }
+
+    fun setCacheableInput(cacheableInput: Boolean) {
+        _cacheableInput = cacheableInput
     }
 }

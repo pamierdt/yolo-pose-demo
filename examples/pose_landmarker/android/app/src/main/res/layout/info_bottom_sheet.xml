@@ -100,6 +100,51 @@
                 android:textSize="@dimen/bottom_sheet_text_size" />
         </androidx.appcompat.widget.LinearLayoutCompat>
 
+        <!-- RKNN performance toggles -->
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/bottom_sheet_default_row_margin"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_centerVertical="true"
+                android:text="@string/label_quant_output"
+                android:textColor="@color/bottom_sheet_text_color"
+                android:textSize="@dimen/bottom_sheet_text_size" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/quant_output_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="false" />
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/bottom_sheet_default_row_margin"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_centerVertical="true"
+                android:text="@string/label_cacheable_input"
+                android:textColor="@color/bottom_sheet_text_color"
+                android:textSize="@dimen/bottom_sheet_text_size" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/cacheable_input_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true" />
+        </androidx.appcompat.widget.LinearLayoutCompat>
+
         <!-- ML confidence threshold adjustment row -->
         <RelativeLayout
             android:layout_width="match_parent"

@@ -102,6 +102,8 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             viewModel.setMinPoseTrackingConfidence(poseLandmarkerHelper.minPoseTrackingConfidence)
             viewModel.setMinPosePresenceConfidence(poseLandmarkerHelper.minPosePresenceConfidence)
             viewModel.setDelegate(poseLandmarkerHelper.currentDelegate)
+            viewModel.setUseQuantOutput(poseLandmarkerHelper.useQuantOutput)
+            viewModel.setCacheableInput(poseLandmarkerHelper.cacheableInput)
 
             // Close the PoseLandmarkerHelper and release resources
             backgroundExecutor.execute { poseLandmarkerHelper.clearPoseLandmarker() }
@@ -155,6 +157,10 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 currentModel = viewModel.currentModel,
                 poseLandmarkerHelperListener = this
             )
+            poseLandmarkerHelper.setPerfOptions(
+                viewModel.currentUseQuantOutput,
+                viewModel.currentCacheableInput
+            )
         }
 
         // Attach listeners to UI control widgets
@@ -176,6 +182,10 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             String.format(
                 Locale.US, "%.2f", viewModel.currentMinPosePresenceConfidence
             )
+        fragmentCameraBinding.bottomSheetLayout.quantOutputSwitch.isChecked =
+            viewModel.currentUseQuantOutput
+        fragmentCameraBinding.bottomSheetLayout.cacheableInputSwitch.isChecked =
+            viewModel.currentCacheableInput
 
         // When clicked, lower pose detection score threshold floor
         fragmentCameraBinding.bottomSheetLayout.detectionThresholdMinus.setOnClickListener {
@@ -222,6 +232,30 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             if (poseLandmarkerHelper.minPosePresenceConfidence <= 0.8) {
                 poseLandmarkerHelper.minPosePresenceConfidence += 0.1f
                 updateControlsUi()
+            }
+        }
+
+        fragmentCameraBinding.bottomSheetLayout.quantOutputSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setUseQuantOutput(isChecked)
+            if (this::poseLandmarkerHelper.isInitialized) {
+                backgroundExecutor.execute {
+                    poseLandmarkerHelper.setPerfOptions(
+                        isChecked,
+                        viewModel.currentCacheableInput
+                    )
+                }
+            }
+        }
+
+        fragmentCameraBinding.bottomSheetLayout.cacheableInputSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setCacheableInput(isChecked)
+            if (this::poseLandmarkerHelper.isInitialized) {
+                backgroundExecutor.execute {
+                    poseLandmarkerHelper.setPerfOptions(
+                        viewModel.currentUseQuantOutput,
+                        isChecked
+                    )
+                }
             }
         }
 
@@ -428,7 +462,13 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal.text =
                     String.format("%d ms", resultBundle.inferenceTime)
                 fragmentCameraBinding.bottomSheetLayout.algorithmTimeVal.text =
-                    String.format("%d ms", resultBundle.algorithmTime)
+                    String.format(
+                        Locale.US,
+                        "pre:%d | native:%d | post:%d ms",
+                        resultBundle.preprocessTime,
+                        resultBundle.nativeTime,
+                        resultBundle.postProcessTime
+                    )
 
                 // Pass necessary information to OverlayView for drawing on the canvas
                 fragmentCameraBinding.overlay.setResults(

@@ -31,6 +31,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import com.google.mediapipe.examples.poselandmarker.JumpRopeVideoProcessor
 import com.google.mediapipe.examples.poselandmarker.MainViewModel
 import com.google.mediapipe.examples.poselandmarker.PoseLandmarkerHelper
 import com.google.mediapipe.examples.poselandmarker.databinding.FragmentGalleryBinding
@@ -296,6 +297,14 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                             setUiEnabled(true)
                             fragmentGalleryBinding.bottomSheetLayout.inferenceTimeVal.text =
                                 String.format("%d ms", result.inferenceTime)
+                            fragmentGalleryBinding.bottomSheetLayout.algorithmTimeVal.text =
+                                String.format(
+                                    Locale.US,
+                                    "pre:%d | native:%d | post:%d ms",
+                                    result.preprocessTime,
+                                    result.nativeTime,
+                                    result.postProcessTime
+                                )
                         }
                     } ?: run { Log.e(TAG, "Error running pose landmarker.") }
 
@@ -328,13 +337,23 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     currentDelegate = viewModel.currentDelegate
                 )
 
+            // Initialize JumpRopeVideoProcessor
+            val jumpRopeProcessor = JumpRopeVideoProcessor(requireContext(), poseLandmarkerHelper)
+
             activity?.runOnUiThread {
                 fragmentGalleryBinding.videoView.visibility = View.GONE
                 fragmentGalleryBinding.progress.visibility = View.VISIBLE
+                fragmentGalleryBinding.tvPlaceholder.visibility = View.VISIBLE
+                fragmentGalleryBinding.tvPlaceholder.text = "Starting analysis..."
             }
 
-            poseLandmarkerHelper.detectVideoFile(uri, VIDEO_INTERVAL_MS)
-                ?.let { resultBundle ->
+            // Use jumpRopeProcessor to process video with counting logic
+            jumpRopeProcessor.processVideo(uri, VIDEO_INTERVAL_MS) { current, total, jumps ->
+                activity?.runOnUiThread {
+                    val percentage = if (total > 0) (current * 100 / total) else 0
+                    fragmentGalleryBinding.tvPlaceholder.text = "Analyzing: $percentage% (Jumps: $jumps)"
+                }
+            }?.let { resultBundle ->
                     activity?.runOnUiThread { displayVideoResult(resultBundle) }
                 }
                 ?: run { Log.e(TAG, "Error running pose landmarker.") }

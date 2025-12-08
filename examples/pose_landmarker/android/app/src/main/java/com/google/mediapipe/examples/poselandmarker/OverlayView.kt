@@ -13,7 +13,7 @@
  * See the License for the a specific language governing permissions and
  * limitations under the License.
  */
-package com.google.mediapipe.examples.poselandmarker
+package com.yolo.pose.demo
 
 import android.content.Context
 import android.graphics.Canvas

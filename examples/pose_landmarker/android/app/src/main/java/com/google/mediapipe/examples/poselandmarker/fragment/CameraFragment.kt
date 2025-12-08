@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.mediapipe.examples.poselandmarker.fragment
+package com.yolo.pose.demo.fragment
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CaptureRequest
 import android.os.Bundle
 import android.util.Log
+import android.util.Range
 import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
@@ -33,14 +35,17 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Camera
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.annotation.OptIn
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
-import com.google.mediapipe.examples.poselandmarker.PoseLandmarkerHelper
-import com.google.mediapipe.examples.poselandmarker.MainViewModel
-import com.google.mediapipe.examples.poselandmarker.R
-import com.google.mediapipe.examples.poselandmarker.databinding.FragmentCameraBinding
+import com.yolo.pose.demo.PoseLandmarkerHelper
+import com.yolo.pose.demo.MainViewModel
+import com.yolo.pose.demo.R
+import com.yolo.pose.demo.databinding.FragmentCameraBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import java.util.Locale
 import java.util.concurrent.ExecutorService
@@ -160,6 +165,10 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             poseLandmarkerHelper.setPerfOptions(
                 viewModel.currentUseQuantOutput,
                 viewModel.currentCacheableInput
+            )
+            poseLandmarkerHelper.setJumpThresholds(
+                viewModel.currentJumpUpThreshold,
+                viewModel.currentJumpDownThreshold
             )
         }
 
@@ -304,6 +313,60 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     /* no op */
                 }
             }
+
+        // Initialize Jump Threshold UI
+        fragmentCameraBinding.bottomSheetLayout.jumpUpThresholdValue.text =
+            String.format(Locale.US, "%.2f", viewModel.currentJumpUpThreshold)
+        fragmentCameraBinding.bottomSheetLayout.jumpDownThresholdValue.text =
+            String.format(Locale.US, "%.2f", viewModel.currentJumpDownThreshold)
+
+        // Jump Up Threshold Control
+        fragmentCameraBinding.bottomSheetLayout.jumpUpThresholdMinus.setOnClickListener {
+            if (viewModel.currentJumpUpThreshold >= 0.1f) {
+                val newVal = viewModel.currentJumpUpThreshold - 0.05f
+                viewModel.setJumpUpThreshold(newVal)
+                fragmentCameraBinding.bottomSheetLayout.jumpUpThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(newVal, viewModel.currentJumpDownThreshold)
+                }
+            }
+        }
+        fragmentCameraBinding.bottomSheetLayout.jumpUpThresholdPlus.setOnClickListener {
+            if (viewModel.currentJumpUpThreshold <= 1.0f) {
+                val newVal = viewModel.currentJumpUpThreshold + 0.05f
+                viewModel.setJumpUpThreshold(newVal)
+                fragmentCameraBinding.bottomSheetLayout.jumpUpThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(newVal, viewModel.currentJumpDownThreshold)
+                }
+            }
+        }
+
+        // Jump Down Threshold Control
+        fragmentCameraBinding.bottomSheetLayout.jumpDownThresholdMinus.setOnClickListener {
+            if (viewModel.currentJumpDownThreshold >= 0.1f) {
+                val newVal = viewModel.currentJumpDownThreshold - 0.05f
+                viewModel.setJumpDownThreshold(newVal)
+                fragmentCameraBinding.bottomSheetLayout.jumpDownThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(viewModel.currentJumpUpThreshold, newVal)
+                }
+            }
+        }
+        fragmentCameraBinding.bottomSheetLayout.jumpDownThresholdPlus.setOnClickListener {
+            if (viewModel.currentJumpDownThreshold <= 1.0f) {
+                val newVal = viewModel.currentJumpDownThreshold + 0.05f
+                viewModel.setJumpDownThreshold(newVal)
+                fragmentCameraBinding.bottomSheetLayout.jumpDownThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(viewModel.currentJumpUpThreshold, newVal)
+                }
+            }
+        }
     }
 
     // Update the values displayed in the bottom sheet. Reset Poselandmarker
@@ -355,7 +418,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     }
 
     // Declare and bind preview, capture and analysis use cases
-    @SuppressLint("UnsafeOptInUsageError")
+    @OptIn(ExperimentalCamera2Interop::class)
     private fun bindCameraUseCases() {
 
         // CameraProvider
@@ -365,23 +428,27 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         val cameraSelector = selectCamera(cameraProvider)
 
         // Preview at 720p to match the analyzer resolution
-        preview = Preview.Builder().setTargetResolution(targetResolution)
+        preview = Preview.Builder().setMaxResolution(targetResolution)
             .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
             .build()
 
         // ImageAnalysis. Using RGBA 8888 to match how our models work
-        imageAnalyzer =
-            ImageAnalysis.Builder().setTargetResolution(targetResolution)
-                .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                .build()
-                // The analyzer can then be assigned to the instance
-                .also {
-                    it.setAnalyzer(backgroundExecutor) { image ->
-                        detectPose(image)
-                    }
-                }
+        val imageAnalysisBuilder = ImageAnalysis.Builder().setMaxResolution(targetResolution)
+            .setTargetRotation(fragmentCameraBinding.viewFinder.display.rotation)
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+
+        // Set target FPS to 15
+        Camera2Interop.Extender(imageAnalysisBuilder).setCaptureRequestOption(
+            CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+            Range(15, 15)
+        )
+
+        imageAnalyzer = imageAnalysisBuilder.build().also {
+            it.setAnalyzer(backgroundExecutor) { image ->
+                detectPose(image)
+            }
+        }
 
         // Must unbind the use-cases before rebinding them
         cameraProvider.unbindAll()

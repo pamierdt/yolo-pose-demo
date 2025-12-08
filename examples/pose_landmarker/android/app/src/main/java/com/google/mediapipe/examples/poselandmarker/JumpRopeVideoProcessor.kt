@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.poselandmarker
+package com.yolo.pose.demo
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -69,14 +69,7 @@ class JumpRopeVideoProcessor(
         var lastHipY: Float = 0f
     )
 
-    /**
-     * 处理视频并返回每帧的姿态结果
-     * Process video and return pose results for each frame
-     * 
-     * @param videoUri 视频URI / Video URI
-     * @param inferenceIntervalMs 推理间隔 (毫秒) / Inference interval (ms)
-     * @return 结果包 / ResultBundle
-     */
+
     /**
      * 处理视频并返回每帧的姿态结果
      * Process video and return pose results for each frame

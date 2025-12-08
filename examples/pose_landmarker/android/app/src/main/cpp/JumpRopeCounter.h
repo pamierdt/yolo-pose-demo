@@ -20,8 +20,13 @@
 
 #pragma once
 
+#ifndef JUMP_ROPE_COUNTER_H
+#define JUMP_ROPE_COUNTER_H
+
 #include <algorithm>
 #include <cmath>
+#include <deque>
+#include <vector>
 
 class JumpRopeCounter {
 public:
@@ -33,22 +38,19 @@ public:
    * STATE_DESCENDING(2): 下降状态，正在落地 / Descending, landing
    *
    * 状态转换 / State Transitions:
-   * GROUND -> ASCENDING: 髋部抬升超过阈值 / Hip lift exceeds threshold
-   * ASCENDING -> DESCENDING: 开始下降 / Start descending
-   * DESCENDING -> GROUND: 回到地面基准 / Return to ground baseline
+   * GROUND -> AIR: 髋部抬升超过自适应波峰的60% / Lift > 60% of Adaptive Peak
+   * AIR -> GROUND: 髋部回落低于自适应波峰的35% / Lift < 35% of Adaptive Peak
    */
-  enum State { STATE_GROUND = 0, STATE_ASCENDING = 1, STATE_DESCENDING = 2 };
+  enum State {
+    STATE_CALIBRATING = 0, // 校准中 / Calibrating
+    STATE_GROUND = 1,      // 地面 / Ground (Valley)
+    STATE_AIR = 2          // 腾空 / Air (Peak)
+  };
 
   /**
    * 构造函数 / Constructor
-   *
-   * @param minIntervalMs 两次跳跃之间的最小间隔时间（毫秒）
-   *                      Minimum interval between two jumps (milliseconds)
-   *                      默认值 / Default: 300ms
-   *                      推荐范围 / Recommended range: 200-500ms
-   *                      - 200ms: 适合快速跳绳 / For fast jumping
-   *                      - 300ms: 标准设置 / Standard setting
-   *                      - 500ms: 适合慢速/儿童 / For slow/children
+   * @param minIntervalMs 两次跳跃之间的最小间隔时间（毫秒）/ Minimum interval
+   * between two jumps (ms) 默认值: 300ms / Default: 300ms
    */
   JumpRopeCounter(float minIntervalMs = 300.0f);
 
@@ -112,6 +114,15 @@ public:
   float getGroundY() const;
 
   /**
+   * 设置起跳和落地阈值比例 / Set jump up and land down threshold ratios
+   * @param upRatio 起跳阈值比例 (默认0.6) / Jump up threshold ratio (default
+   * 0.6)
+   * @param downRatio 落地阈值比例 (默认0.35) / Land down threshold ratio
+   * (default 0.35)
+   */
+  void setThresholds(float upRatio, float downRatio);
+
+  /**
    * 获取当前状态 / Get current state
    * @return 状态值 (0=GROUND, 1=ASCENDING, 2=DESCENDING)
    *         State value (0=GROUND, 1=ASCENDING, 2=DESCENDING)
@@ -126,30 +137,55 @@ private:
   State state; // 当前状态 / Current state
   int count;   // 跳跃计数 / Jump count
 
+  // ========== 阈值参数 / Threshold Parameters ==========
+  float upThresholdRatio = 0.60f;   // 起跳阈值比例 / Jump up threshold ratio
+  float downThresholdRatio = 0.35f; // 落地阈值比例 / Land down threshold ratio
+
   // ========== 基准线 / Baselines ==========
   float groundY; // 髋部地面基准（动态更新）/ Hip ground baseline (dynamically
                  // updated)
-  float ankleGroundY; // 踝部地面基准（动态更新）/ Ankle ground baseline
-                      // (dynamically updated)
+  float ankleGroundY;         // 踝部地面基准（动态更新）/ Ankle ground baseline
+                              // (dynamically updated)
+  float prevShoulderY = 0.0f; // 上一帧肩中心Y / Previous frame shoulder Y
+  bool hasPrevShoulder =
+      false; // 是否已有上一帧数据 / Whether previous frame exists
+
+  // ========== 状态机变量 / State Machine Variables ==========
+  double lastJumpTime;   // 上次计数时间戳（毫秒）/ Last count timestamp (ms)
+  double airStartTime;   // 腾空开始时间戳 / Air start timestamp
+  float currentJumpPeak; // 当前跳跃高度自适应包络 / Adaptive jump peak envelope
+  float maxAnkleLiftInAir; // 腾空期间最大踝部抬升 / Max ankle lift during air
+                           // state
+  bool isJumpValid;        // 本次跳跃是否有效 / Is current jump valid
 
   // ========== 时间控制 / Time Control ==========
-  double lastJumpTime; // 上次计数时间戳（毫秒）/ Last count timestamp (ms)
-  double minInterval;  // 最小跳跃间隔（毫秒）/ Minimum jump interval (ms)
+  // double lastJumpTime; // 上次计数时间戳（毫秒）/ Last count timestamp (ms)
+  // // Moved to State Machine Variables
+  double minInterval; // 最小跳跃间隔（毫秒）/ Minimum jump interval (ms)
+  std::deque<double> recentIntervals; // 最近5次跳跃间隔(用于计算平均节奏) /
+                                      // Recent 5 jump intervals
 
   // ========== 跳跃追踪 / Jump Tracking ==========
-  float maxJumpY; // 本次跳跃最高点（Y最小值）/ Current jump peak (min Y value)
-  bool isJumpValid; // 本次跳跃是否有效（踝部验证通过）/ Is current jump valid
-                    // (ankle verified)
+  // float maxJumpY; // 本次跳跃最高点（Y最小值）/ Current jump peak (min Y
+  // value) // Removed bool isJumpValid; // 本次跳跃是否有效（踝部验证通过）/ Is
+  // current jump valid // Moved to State Machine Variables (ankle verified)
 
-  // ========== 初始化标志 / Initialization Flag ==========
-  bool initialized; // 是否已初始化 / Is initialized
+  // ========== 校准参数 / Calibration ==========
+  static const int CALIBRATION_FRAMES = 3; // 快速启动：取前3帧作为初始基准
+  static const int POST_CALIBRATION_FRAMES =
+      10; // 校准后额外补偿帧，基准快速收敛
+  int calibrationCounter;
+  float calibrationHipSum;
+  float calibrationAnkleSum;
+  int postCalibCounter;
 
   // ========== 优化：多帧平滑 / Optimization: Multi-frame Smoothing ==========
   static const int SMOOTH_WINDOW_SIZE = 3;
-  struct MovingAverage {
+  struct WeightedMovingAverage {
     float buffer[SMOOTH_WINDOW_SIZE];
     int index = 0;
     int count = 0;
+    const float weights[3] = {0.2f, 0.3f, 0.5f};
 
     void push(float value) {
       buffer[index] = value;
@@ -161,10 +197,29 @@ private:
     float get() const {
       if (count == 0)
         return 0.0f;
-      float sum = 0.0f;
-      for (int i = 0; i < count; i++)
-        sum += buffer[i];
-      return sum / count;
+      if (count < SMOOTH_WINDOW_SIZE) {
+        float sum = 0.0f;
+        for (int i = 0; i < count; i++)
+          sum += buffer[i];
+        return sum / count;
+      }
+
+      float weightedSum = 0.0f;
+      float wSum = 0.0f;
+
+      int idx_0 = (index - 1 + SMOOTH_WINDOW_SIZE) % SMOOTH_WINDOW_SIZE;
+      weightedSum += buffer[idx_0] * weights[2];
+      wSum += weights[2];
+
+      int idx_1 = (index - 2 + SMOOTH_WINDOW_SIZE) % SMOOTH_WINDOW_SIZE;
+      weightedSum += buffer[idx_1] * weights[1];
+      wSum += weights[1];
+
+      int idx_2 = (index - 3 + SMOOTH_WINDOW_SIZE) % SMOOTH_WINDOW_SIZE;
+      weightedSum += buffer[idx_2] * weights[0];
+      wSum += weights[0];
+
+      return weightedSum / wSum;
     }
 
     void reset() {
@@ -173,9 +228,9 @@ private:
     }
   };
 
-  MovingAverage hipSmoother;
-  MovingAverage shoulderSmoother;
-  MovingAverage ankleSmoother;
+  WeightedMovingAverage hipSmoother;
+  WeightedMovingAverage shoulderSmoother;
+  WeightedMovingAverage ankleSmoother;
 
   // ========== 优化：自适应阈值 / Optimization: Adaptive Threshold ==========
   static const int HISTORY_SIZE = 5;
@@ -187,5 +242,7 @@ private:
   float getAdaptiveThresholdCoefficient() const;
 
   // ========== 优化：姿态验证 / Optimization: Pose Validation ==========
-  bool isValidPose(float shoulderY, float hipY, float ankleY) const;
+  bool checkPoseValidity(float shoulderY, float hipY, float ankleY);
 };
+
+#endif // JUMP_ROPE_COUNTER_H

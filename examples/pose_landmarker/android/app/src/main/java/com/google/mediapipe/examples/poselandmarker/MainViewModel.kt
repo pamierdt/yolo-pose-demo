@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.mediapipe.examples.poselandmarker
+package com.yolo.pose.demo
 
 import androidx.lifecycle.ViewModel
 
@@ -73,5 +73,18 @@ class MainViewModel : ViewModel() {
 
     fun setCacheableInput(cacheableInput: Boolean) {
         _cacheableInput = cacheableInput
+    }
+    private var _jumpUpThreshold: Float = 0.60f
+    private var _jumpDownThreshold: Float = 0.35f
+
+    val currentJumpUpThreshold: Float get() = _jumpUpThreshold
+    val currentJumpDownThreshold: Float get() = _jumpDownThreshold
+
+    fun setJumpUpThreshold(threshold: Float) {
+        _jumpUpThreshold = threshold
+    }
+
+    fun setJumpDownThreshold(threshold: Float) {
+        _jumpDownThreshold = threshold
     }
 }

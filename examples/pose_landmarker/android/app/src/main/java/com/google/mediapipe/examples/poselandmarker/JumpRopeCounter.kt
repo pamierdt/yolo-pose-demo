@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.poselandmarker
+package com.yolo.pose.demo
 
 import android.util.Log
 
@@ -102,6 +102,17 @@ class JumpRopeCounter(
     }
 
     /**
+     * 设置跳跃检测阈值
+     * Set jump detection thresholds
+     * @param upRatio 起跳阈值比例 (默认0.60) / Jump up threshold ratio (default 0.60)
+     * @param downRatio 落地阈值比例 (默认0.35) / Landing down threshold ratio (default 0.35)
+     */
+    fun setThresholds(upRatio: Float, downRatio: Float) {
+        check(handle != 0L) { "JumpRopeCounter has been closed" }
+        nativeSetThresholds(handle, upRatio, downRatio)
+    }
+
+    /**
      * 释放 Native 资源 / Release native resources
      * 实现 AutoCloseable 接口，支持 use {} 语法
      * Implements AutoCloseable interface, supports use {} syntax
@@ -157,6 +168,15 @@ class JumpRopeCounter(
      * 获取状态（Native 调用）/ Get state (native call)
      */
     private external fun nativeGetState(handle: Long): Int
+
+    /**
+     * 设置阈值（Native 调用）/ Set thresholds (native call)
+     */
+    private external fun nativeSetThresholds(
+        handle: Long,
+        upRatio: Float,
+        downRatio: Float
+    )
     
     /**
      * 重置计数器（Native 调用）/ Reset counter (native call)

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.google.mediapipe.examples.poselandmarker.fragment
+package com.yolo.pose.demo.fragment
 
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -31,10 +31,10 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import com.google.mediapipe.examples.poselandmarker.JumpRopeVideoProcessor
-import com.google.mediapipe.examples.poselandmarker.MainViewModel
-import com.google.mediapipe.examples.poselandmarker.PoseLandmarkerHelper
-import com.google.mediapipe.examples.poselandmarker.databinding.FragmentGalleryBinding
+import com.yolo.pose.demo.JumpRopeVideoProcessor
+import com.yolo.pose.demo.MainViewModel
+import com.yolo.pose.demo.PoseLandmarkerHelper
+import com.yolo.pose.demo.databinding.FragmentGalleryBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import java.util.*
 import java.util.concurrent.Executors
@@ -223,6 +223,60 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     /* no op */
                 }
             }
+
+        // Initialize Jump Threshold UI
+        fragmentGalleryBinding.bottomSheetLayout.jumpUpThresholdValue.text =
+            String.format(Locale.US, "%.2f", viewModel.currentJumpUpThreshold)
+        fragmentGalleryBinding.bottomSheetLayout.jumpDownThresholdValue.text =
+            String.format(Locale.US, "%.2f", viewModel.currentJumpDownThreshold)
+
+        // Jump Up Threshold Control
+        fragmentGalleryBinding.bottomSheetLayout.jumpUpThresholdMinus.setOnClickListener {
+            if (viewModel.currentJumpUpThreshold >= 0.1f) {
+                val newVal = viewModel.currentJumpUpThreshold - 0.05f
+                viewModel.setJumpUpThreshold(newVal)
+                fragmentGalleryBinding.bottomSheetLayout.jumpUpThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(newVal, viewModel.currentJumpDownThreshold)
+                }
+            }
+        }
+        fragmentGalleryBinding.bottomSheetLayout.jumpUpThresholdPlus.setOnClickListener {
+            if (viewModel.currentJumpUpThreshold <= 1.0f) {
+                val newVal = viewModel.currentJumpUpThreshold + 0.05f
+                viewModel.setJumpUpThreshold(newVal)
+                fragmentGalleryBinding.bottomSheetLayout.jumpUpThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(newVal, viewModel.currentJumpDownThreshold)
+                }
+            }
+        }
+
+        // Jump Down Threshold Control
+        fragmentGalleryBinding.bottomSheetLayout.jumpDownThresholdMinus.setOnClickListener {
+            if (viewModel.currentJumpDownThreshold >= 0.1f) {
+                val newVal = viewModel.currentJumpDownThreshold - 0.05f
+                viewModel.setJumpDownThreshold(newVal)
+                fragmentGalleryBinding.bottomSheetLayout.jumpDownThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(viewModel.currentJumpUpThreshold, newVal)
+                }
+            }
+        }
+        fragmentGalleryBinding.bottomSheetLayout.jumpDownThresholdPlus.setOnClickListener {
+            if (viewModel.currentJumpDownThreshold <= 1.0f) {
+                val newVal = viewModel.currentJumpDownThreshold + 0.05f
+                viewModel.setJumpDownThreshold(newVal)
+                fragmentGalleryBinding.bottomSheetLayout.jumpDownThresholdValue.text =
+                    String.format(Locale.US, "%.2f", newVal)
+                if (this::poseLandmarkerHelper.isInitialized) {
+                    poseLandmarkerHelper.setJumpThresholds(viewModel.currentJumpUpThreshold, newVal)
+                }
+            }
+        }
     }
 
     // Update the values displayed in the bottom sheet. Reset detector.
@@ -283,6 +337,8 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                             minPosePresenceConfidence = viewModel.currentMinPosePresenceConfidence,
                             currentDelegate = viewModel.currentDelegate
                         )
+                    poseLandmarkerHelper.jumpUpThreshold = viewModel.currentJumpUpThreshold
+                    poseLandmarkerHelper.jumpDownThreshold = viewModel.currentJumpDownThreshold
 
                     poseLandmarkerHelper.detectImage(bitmap)?.let { result ->
                         activity?.runOnUiThread {
@@ -336,6 +392,8 @@ class GalleryFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                     minPosePresenceConfidence = viewModel.currentMinPosePresenceConfidence,
                     currentDelegate = viewModel.currentDelegate
                 )
+            poseLandmarkerHelper.jumpUpThreshold = viewModel.currentJumpUpThreshold
+            poseLandmarkerHelper.jumpDownThreshold = viewModel.currentJumpDownThreshold
 
             // Initialize JumpRopeVideoProcessor
             val jumpRopeProcessor = JumpRopeVideoProcessor(requireContext(), poseLandmarkerHelper)

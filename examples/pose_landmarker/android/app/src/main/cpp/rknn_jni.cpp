@@ -36,8 +36,8 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 static bool ENABLE_LOGS = true;
-static bool g_force_quant_output = false;   // 输出采用量化值，手动反量化
-static bool g_input_mem_cacheable = true;   // 输入缓冲是否使用可缓存分配
+static bool g_force_quant_output = false; // 输出采用量化值，手动反量化
+static bool g_input_mem_cacheable = true; // 输入缓冲是否使用可缓存分配
 
 class Timer {
 public:
@@ -240,8 +240,8 @@ void NMS(std::vector<Pose> &poses, float iou_threshold) {
 // JumpRopeCounter.h/cpp
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeCreate(
-    JNIEnv *env, jobject, jfloat minIntervalMs) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeCreate(JNIEnv *env, jobject,
+                                                     jfloat minIntervalMs) {
   if (ENABLE_LOGS)
     LOGI("nativeCreate: minInt=%.2f", minIntervalMs);
   auto *obj = new JumpRopeCounter(minIntervalMs);
@@ -249,8 +249,8 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeCreate(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeReset(
-    JNIEnv *env, jobject, jlong handle) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeReset(JNIEnv *env, jobject,
+                                                    jlong handle) {
   auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
   if (!obj)
     return;
@@ -260,9 +260,11 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeReset(
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeUpdate(
-    JNIEnv *env, jobject, jlong handle, jfloat shoulderY, jfloat hipY,
-    jfloat ankleY, jdouble timestampMs) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeUpdate(JNIEnv *env, jobject,
+                                                     jlong handle,
+                                                     jfloat shoulderY,
+                                                     jfloat hipY, jfloat ankleY,
+                                                     jdouble timestampMs) {
   auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
   if (!obj) {
     ThrowIllegalState(env, "JumpRopeCounter handle is null");
@@ -272,8 +274,8 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeUpdate(
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetCount(
-    JNIEnv *env, jobject, jlong handle) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeGetCount(JNIEnv *env, jobject,
+                                                       jlong handle) {
   auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
   if (!obj) {
     ThrowIllegalState(env, "JumpRopeCounter handle is null");
@@ -284,8 +286,8 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetCount
 }
 
 extern "C" JNIEXPORT jfloat JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetGroundY(
-    JNIEnv *env, jobject, jlong handle) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeGetGroundY(JNIEnv *env, jobject,
+                                                         jlong handle) {
   auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
   if (!obj) {
     ThrowIllegalState(env, "JumpRopeCounter handle is null");
@@ -295,8 +297,8 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetGroun
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetState(
-    JNIEnv *env, jobject, jlong handle) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeGetState(JNIEnv *env, jobject,
+                                                       jlong handle) {
   auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
   if (!obj) {
     ThrowIllegalState(env, "JumpRopeCounter handle is null");
@@ -306,8 +308,19 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeGetState
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeRelease(
-    JNIEnv *env, jobject, jlong handle) {
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeSetThresholds(
+    JNIEnv *env, jobject, jlong handle, jfloat upRatio, jfloat downRatio) {
+  auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
+  if (!obj) {
+    ThrowIllegalState(env, "JumpRopeCounter handle is null");
+    return;
+  }
+  obj->setThresholds(upRatio, downRatio);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_yolo_pose_demo_JumpRopeCounter_nativeRelease(JNIEnv *env, jobject,
+                                                      jlong handle) {
   auto *obj = reinterpret_cast<JumpRopeCounter *>(handle);
   if (!obj)
     return;
@@ -315,7 +328,7 @@ Java_com_google_mediapipe_examples_poselandmarker_JumpRopeCounter_nativeRelease(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeSetPerfOptions(
+Java_com_yolo_pose_demo_RknnRunner_nativeSetPerfOptions(
     JNIEnv * /*env*/, jobject /*thiz*/, jboolean useQuantOutput,
     jboolean cacheableInput) {
   g_force_quant_output = (useQuantOutput == JNI_TRUE);
@@ -326,8 +339,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeSetPerfOption
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeInit(
-    JNIEnv *env, jobject /*thiz*/, jobject model_buffer, jint model_size) {
+Java_com_yolo_pose_demo_RknnRunner_nativeInit(JNIEnv *env, jobject /*thiz*/,
+                                              jobject model_buffer,
+                                              jint model_size) {
   if (!model_buffer) {
     ThrowIllegalState(env, "Model buffer is null");
     return 0;
@@ -466,8 +480,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeInit(
 }
 
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeGetOutputShape(
-    JNIEnv *env, jobject /*thiz*/, jlong handle) {
+Java_com_yolo_pose_demo_RknnRunner_nativeGetOutputShape(JNIEnv *env,
+                                                        jobject /*thiz*/,
+                                                        jlong handle) {
   auto *holder = FromHandle(handle);
   if (!holder || holder->output_attrs.empty()) {
     ThrowIllegalState(env, "RKNN handle is null or not initialized");
@@ -486,9 +501,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeGetOutputShap
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRun(
-    JNIEnv *env, jobject /*thiz*/, jlong handle, jobject input_buffer,
-    jint input_size) {
+Java_com_yolo_pose_demo_RknnRunner_nativeRun(JNIEnv *env, jobject /*thiz*/,
+                                             jlong handle, jobject input_buffer,
+                                             jint input_size) {
   auto t_start = std::chrono::high_resolution_clock::now();
   auto *holder = FromHandle(handle);
   if (!holder) {
@@ -510,10 +525,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRun(
          expected_size_bytes, holder->input_attr.type, input_size);
   }
 
-  bool use_zero_copy =
-      holder->input_mem &&
-      expected_size_bytes <= holder->input_tensor_bytes &&
-      holder->input_mem->virt_addr != nullptr;
+  bool use_zero_copy = holder->input_mem &&
+                       expected_size_bytes <= holder->input_tensor_bytes &&
+                       holder->input_mem->virt_addr != nullptr;
   if (use_zero_copy) {
     size_t copy_size = static_cast<size_t>(input_size);
     if (copy_size > holder->input_tensor_bytes) {
@@ -574,11 +588,12 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRun(
     outputs[i].want_float = use_quant_output ? 0 : 1;
     if (i == 0) {
       outputs[i].is_prealloc = 1;
-      outputs[i].buf = use_quant_output
-                           ? static_cast<void *>(holder->quant_output_buffer.data())
-                           : static_cast<void *>(output.data());
-      outputs[i].size = use_quant_output ? out_attr.size
-                                         : out_elems * sizeof(float);
+      outputs[i].buf =
+          use_quant_output
+              ? static_cast<void *>(holder->quant_output_buffer.data())
+              : static_cast<void *>(output.data());
+      outputs[i].size =
+          use_quant_output ? out_attr.size : out_elems * sizeof(float);
     } else {
       outputs[i].is_prealloc = 0;
       outputs[i].buf = nullptr;
@@ -661,8 +676,10 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRun(
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunPixels(
-    JNIEnv *env, jobject /*thiz*/, jlong handle, jintArray pixels) {
+Java_com_yolo_pose_demo_RknnRunner_nativeRunPixels(JNIEnv *env,
+                                                   jobject /*thiz*/,
+                                                   jlong handle,
+                                                   jintArray pixels) {
   auto t_start = std::chrono::high_resolution_clock::now();
   auto *holder = FromHandle(handle);
   if (!holder) {
@@ -683,10 +700,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunPixels(
 
   void *input_buf = nullptr;
   size_t input_size_bytes = 0;
-  size_t contiguous_bytes =
-      num_elements * ElemSize(holder->input_attr.type);
-  bool zero_copy_possible = IsZeroCopyStrideCompatible(
-      holder, contiguous_bytes);
+  size_t contiguous_bytes = num_elements * ElemSize(holder->input_attr.type);
+  bool zero_copy_possible =
+      IsZeroCopyStrideCompatible(holder, contiguous_bytes);
 
   if (input_type == RKNN_TENSOR_FLOAT16) {
     const uint16_t *lut = holder->fp16_lut.data();
@@ -761,8 +777,7 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunPixels(
     ret = rknn_inputs_set(holder->ctx, 1, inputs);
     if (ret != RKNN_SUCC) {
       LOGE("rknn_inputs_set failed: %d", ret);
-      ThrowIllegalState(env,
-                        "rknn_inputs_set failed: " + std::to_string(ret));
+      ThrowIllegalState(env, "rknn_inputs_set failed: " + std::to_string(ret));
       return nullptr;
     }
   }
@@ -794,11 +809,12 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunPixels(
     outputs[i].want_float = use_quant_output ? 0 : 1;
     if (i == 0) {
       outputs[i].is_prealloc = 1;
-      outputs[i].buf = use_quant_output
-                           ? static_cast<void *>(holder->quant_output_buffer.data())
-                           : static_cast<void *>(output.data());
-      outputs[i].size = use_quant_output ? out_attr.size
-                                         : out_elems * sizeof(float);
+      outputs[i].buf =
+          use_quant_output
+              ? static_cast<void *>(holder->quant_output_buffer.data())
+              : static_cast<void *>(output.data());
+      outputs[i].size =
+          use_quant_output ? out_attr.size : out_elems * sizeof(float);
     } else {
       outputs[i].is_prealloc = 0;
       outputs[i].buf = nullptr;
@@ -853,8 +869,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunPixels(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRelease(
-    JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+Java_com_yolo_pose_demo_RknnRunner_nativeRelease(JNIEnv * /*env*/,
+                                                 jobject /*thiz*/,
+                                                 jlong handle) {
   auto *holder = FromHandle(handle);
   if (!holder)
     return;
@@ -894,9 +911,8 @@ int PreprocessWithRGA(RknnHolder *holder, void *src_pixels,
   int target_height = holder->input_attr.dims[1];
   int dst_w_stride =
       holder->input_attr.w_stride ? holder->input_attr.w_stride : target_width;
-  int dst_h_stride = holder->input_attr.h_stride
-                         ? holder->input_attr.h_stride
-                         : target_height;
+  int dst_h_stride =
+      holder->input_attr.h_stride ? holder->input_attr.h_stride : target_height;
 
   // 1. Create source buffer descriptor (Android Bitmap: RGBA8888)
   rga_buffer_t src_buf = wrapbuffer_virtualaddr(
@@ -905,13 +921,23 @@ int PreprocessWithRGA(RknnHolder *holder, void *src_pixels,
       static_cast<int>(info->height));
 
   // 2. Prepare destination buffer (RGB format)
-  size_t num_elements =
-      static_cast<size_t>(target_width) * target_height * 3;
+  size_t num_elements = static_cast<size_t>(target_width) * target_height * 3;
   size_t dst_bytes_with_stride =
       static_cast<size_t>(dst_w_stride) * dst_h_stride * 3;
   bool has_zero_copy =
-      holder->input_mem && holder->input_mem->phys_addr != 0 &&
+      holder->input_mem && holder->input_mem->virt_addr &&
       IsZeroCopyStrideCompatible(holder, dst_bytes_with_stride);
+  bool has_phys_addr = holder->input_mem && holder->input_mem->phys_addr != 0;
+  if (!has_zero_copy && ENABLE_LOGS && !holder->zero_copy_warning_shown) {
+    LOGI("Zero-copy disabled (input_mem=%p, virt=%p, phys=%p, stride=%u)",
+         static_cast<void *>(holder->input_mem),
+         holder->input_mem ? holder->input_mem->virt_addr : nullptr,
+         holder->input_mem
+             ? reinterpret_cast<void *>(holder->input_mem->phys_addr)
+             : nullptr,
+         holder->input_attr.size_with_stride);
+    holder->zero_copy_warning_shown = true;
+  }
 
   if (input_type == RKNN_TENSOR_UINT8) {
     // NPU needs UINT8 input - directly output RGB888 into RKNN-managed memory
@@ -919,9 +945,16 @@ int PreprocessWithRGA(RknnHolder *holder, void *src_pixels,
     uint8_t *dst_ptr = nullptr;
 
     if (has_zero_copy) {
-      dst_buf = wrapbuffer_physicaladdr(
-          reinterpret_cast<void *>(holder->input_mem->phys_addr), target_width,
-          target_height, RK_FORMAT_RGB_888, dst_w_stride, dst_h_stride);
+      if (has_phys_addr) {
+        dst_buf = wrapbuffer_physicaladdr(
+            reinterpret_cast<void *>(holder->input_mem->phys_addr),
+            target_width, target_height, RK_FORMAT_RGB_888, dst_w_stride,
+            dst_h_stride);
+      } else {
+        dst_buf = wrapbuffer_virtualaddr(
+            holder->input_mem->virt_addr, target_width, target_height,
+            RK_FORMAT_RGB_888, dst_w_stride, dst_h_stride);
+      }
       dst_ptr = static_cast<uint8_t *>(holder->input_mem->virt_addr);
     } else {
       if (holder->uint8_input_buffer.size() != num_elements) {
@@ -963,24 +996,47 @@ int PreprocessWithRGA(RknnHolder *holder, void *src_pixels,
 
     // 4. Fast CPU conversion UINT8 -> FP16 (data is already resized, much
     // smaller)
-    uint16_t *dst = nullptr;
-    size_t fp16_bytes = num_elements * sizeof(uint16_t);
-    if (IsZeroCopyStrideCompatible(holder, fp16_bytes)) {
-      dst = static_cast<uint16_t *>(holder->input_mem->virt_addr);
+    const uint16_t *lut = holder->fp16_lut.data();
+    const uint8_t *src = holder->uint8_input_buffer.data();
+    size_t fp16_bytes_with_stride =
+        static_cast<size_t>(dst_w_stride) * dst_h_stride * 3 * sizeof(uint16_t);
+    bool fp16_zero_copy =
+        holder->input_mem &&
+        IsZeroCopyStrideCompatible(holder, fp16_bytes_with_stride);
+
+    if (fp16_zero_copy) {
+      uint16_t *dst = static_cast<uint16_t *>(holder->input_mem->virt_addr);
+      size_t dst_row_elems = static_cast<size_t>(dst_w_stride) * 3;
+      size_t valid_row_elems = static_cast<size_t>(target_width) * 3;
+      for (int y = 0; y < target_height && y < dst_h_stride; ++y) {
+        uint16_t *dst_row = dst + y * dst_row_elems;
+        const uint8_t *src_row = src + static_cast<size_t>(y) * valid_row_elems;
+        for (size_t x = 0; x < valid_row_elems; ++x) {
+          dst_row[x] = lut[src_row[x]];
+        }
+        if (dst_row_elems > valid_row_elems) {
+          std::memset(dst_row + valid_row_elems, 0,
+                      (dst_row_elems - valid_row_elems) * sizeof(uint16_t));
+        }
+      }
+      if (dst_h_stride > target_height) {
+        std::memset(dst + static_cast<size_t>(target_height) * dst_row_elems, 0,
+                    (dst_h_stride - target_height) * dst_row_elems *
+                        sizeof(uint16_t));
+      }
+      *output_buf = dst;
+      *output_size = fp16_bytes_with_stride;
     } else {
       if (holder->fp16_input_buffer.size() != num_elements) {
         holder->fp16_input_buffer.resize(num_elements);
       }
-      dst = holder->fp16_input_buffer.data();
+      uint16_t *dst = holder->fp16_input_buffer.data();
+      for (size_t i = 0; i < num_elements; ++i) {
+        dst[i] = lut[src[i]];
+      }
+      *output_buf = dst;
+      *output_size = num_elements * 2;
     }
-    const uint16_t *lut = holder->fp16_lut.data();
-    const uint8_t *src = holder->uint8_input_buffer.data();
-
-    for (size_t i = 0; i < num_elements; ++i) {
-      dst[i] = lut[src[i]];
-    }
-    *output_buf = dst;
-    *output_size = num_elements * 2;
 
   } else {
     LOGE("Unsupported input type for RGA preprocessing: %d", input_type);
@@ -1007,7 +1063,7 @@ inline float inverse_sigmoid(float y) {
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
-Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWithNms(
+Java_com_yolo_pose_demo_RknnRunner_nativeRunBitmapWithNms(
     JNIEnv *env, jobject /*thiz*/, jlong handle, jobject bitmap,
     jfloat detectThresh, jfloat nmsThresh) {
   auto *holder = FromHandle(handle);
@@ -1015,6 +1071,8 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
     ThrowIllegalState(env, "RKNN handle is null");
     return nullptr;
   }
+  if (ENABLE_LOGS)
+    LOGI("开始处理视频帧");
 
   auto t_start = std::chrono::high_resolution_clock::now();
 
@@ -1039,6 +1097,7 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
   }
 
   auto t_lock = std::chrono::high_resolution_clock::now();
+  auto t_preprocess_start = t_lock;
 
   rknn_tensor_type input_type = holder->input_attr.type;
   size_t num_pixels = info.width * info.height;
@@ -1069,11 +1128,25 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
       LOGI("Using CPU preprocessing (RGA unavailable)");
     }
 
+    int dst_w_stride = holder->input_attr.w_stride
+                           ? holder->input_attr.w_stride
+                           : static_cast<int>(info.width);
+    int dst_h_stride = holder->input_attr.h_stride
+                           ? holder->input_attr.h_stride
+                           : static_cast<int>(info.height);
+    int copy_width = std::min(dst_w_stride, static_cast<int>(info.width));
+    int copy_height = std::min(dst_h_stride, static_cast<int>(info.height));
+
     if (input_type == RKNN_TENSOR_FLOAT16) {
       const uint16_t *lut = holder->fp16_lut.data();
+      size_t stride_bytes = static_cast<size_t>(dst_w_stride) * dst_h_stride *
+                            3 * sizeof(uint16_t);
+      bool zero_copy_possible =
+          holder->input_mem && IsZeroCopyStrideCompatible(holder, stride_bytes);
+
       uint16_t *dst = nullptr;
       size_t target_bytes = num_elements * sizeof(uint16_t);
-      if (IsZeroCopyStrideCompatible(holder, target_bytes)) {
+      if (zero_copy_possible) {
         dst = static_cast<uint16_t *>(holder->input_mem->virt_addr);
       } else {
         if (holder->fp16_input_buffer.size() != num_elements) {
@@ -1083,28 +1156,57 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
       }
 
       uint8_t *src_rows = static_cast<uint8_t *>(pixels_ptr);
-      int dst_idx = 0;
-
-      for (int y = 0; y < info.height; ++y) {
-        uint8_t *src_pixel = src_rows + y * info.stride;
-        for (int x = 0; x < info.width; ++x) {
-          // Memory: B G R A
-          uint8_t b = src_pixel[0];
-          uint8_t g = src_pixel[1];
-          uint8_t r = src_pixel[2];
-
-          dst[dst_idx++] = lut[r];
-          dst[dst_idx++] = lut[g];
-          dst[dst_idx++] = lut[b];
-
-          src_pixel += 4;
+      if (zero_copy_possible) {
+        size_t dst_row_elems = static_cast<size_t>(dst_w_stride) * 3;
+        size_t valid_row_elems = static_cast<size_t>(copy_width) * 3;
+        for (int y = 0; y < copy_height; ++y) {
+          uint16_t *dst_row = dst + static_cast<size_t>(y) * dst_row_elems;
+          uint8_t *src_pixel = src_rows + static_cast<size_t>(y) * info.stride;
+          for (int x = 0; x < copy_width; ++x) {
+            size_t base = static_cast<size_t>(x) * 3;
+            dst_row[base + 0] = lut[src_pixel[2]];
+            dst_row[base + 1] = lut[src_pixel[1]];
+            dst_row[base + 2] = lut[src_pixel[0]];
+            src_pixel += 4;
+          }
+          if (dst_row_elems > valid_row_elems) {
+            std::memset(dst_row + valid_row_elems, 0,
+                        (dst_row_elems - valid_row_elems) * sizeof(uint16_t));
+          }
         }
+        if (dst_h_stride > copy_height) {
+          std::memset(dst + static_cast<size_t>(copy_height) * dst_row_elems, 0,
+                      (dst_h_stride - copy_height) * dst_row_elems *
+                          sizeof(uint16_t));
+        }
+        input_size_bytes = stride_bytes;
+      } else {
+        size_t dst_idx = 0;
+        for (int y = 0; y < info.height; ++y) {
+          uint8_t *src_pixel = src_rows + static_cast<size_t>(y) * info.stride;
+          for (int x = 0; x < info.width; ++x) {
+            uint8_t b = src_pixel[0];
+            uint8_t g = src_pixel[1];
+            uint8_t r = src_pixel[2];
+
+            dst[dst_idx++] = lut[r];
+            dst[dst_idx++] = lut[g];
+            dst[dst_idx++] = lut[b];
+
+            src_pixel += 4;
+          }
+        }
+        input_size_bytes = target_bytes;
       }
       input_buf = dst;
-      input_size_bytes = target_bytes;
     } else if (input_type == RKNN_TENSOR_UINT8) {
+      size_t stride_bytes =
+          static_cast<size_t>(dst_w_stride) * dst_h_stride * 3;
+      bool zero_copy_possible =
+          holder->input_mem && IsZeroCopyStrideCompatible(holder, stride_bytes);
+
       uint8_t *dst = nullptr;
-      if (IsZeroCopyStrideCompatible(holder, num_elements)) {
+      if (zero_copy_possible) {
         dst = static_cast<uint8_t *>(holder->input_mem->virt_addr);
       } else {
         if (holder->uint8_input_buffer.size() != num_elements) {
@@ -1114,25 +1216,48 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
       }
 
       uint8_t *src_rows = static_cast<uint8_t *>(pixels_ptr);
-      int dst_idx = 0;
-
-      for (int y = 0; y < info.height; ++y) {
-        uint8_t *src_pixel = src_rows + y * info.stride;
-        for (int x = 0; x < info.width; ++x) {
-          // Memory: B G R A
-          uint8_t b = src_pixel[0];
-          uint8_t g = src_pixel[1];
-          uint8_t r = src_pixel[2];
-
-          dst[dst_idx++] = r;
-          dst[dst_idx++] = g;
-          dst[dst_idx++] = b;
-
-          src_pixel += 4;
+      if (zero_copy_possible) {
+        size_t dst_row_bytes = static_cast<size_t>(dst_w_stride) * 3;
+        size_t valid_row_bytes = static_cast<size_t>(copy_width) * 3;
+        for (int y = 0; y < copy_height; ++y) {
+          uint8_t *dst_row = dst + static_cast<size_t>(y) * dst_row_bytes;
+          uint8_t *src_pixel = src_rows + static_cast<size_t>(y) * info.stride;
+          for (int x = 0; x < copy_width; ++x) {
+            size_t base = static_cast<size_t>(x) * 3;
+            dst_row[base + 0] = src_pixel[2];
+            dst_row[base + 1] = src_pixel[1];
+            dst_row[base + 2] = src_pixel[0];
+            src_pixel += 4;
+          }
+          if (dst_row_bytes > valid_row_bytes) {
+            std::memset(dst_row + valid_row_bytes, 0,
+                        dst_row_bytes - valid_row_bytes);
+          }
         }
+        if (dst_h_stride > copy_height) {
+          std::memset(dst + static_cast<size_t>(copy_height) * dst_row_bytes, 0,
+                      (dst_h_stride - copy_height) * dst_row_bytes);
+        }
+        input_size_bytes = stride_bytes;
+      } else {
+        size_t dst_idx = 0;
+        for (int y = 0; y < info.height; ++y) {
+          uint8_t *src_pixel = src_rows + static_cast<size_t>(y) * info.stride;
+          for (int x = 0; x < info.width; ++x) {
+            uint8_t b = src_pixel[0];
+            uint8_t g = src_pixel[1];
+            uint8_t r = src_pixel[2];
+
+            dst[dst_idx++] = r;
+            dst[dst_idx++] = g;
+            dst[dst_idx++] = b;
+
+            src_pixel += 4;
+          }
+        }
+        input_size_bytes = num_elements;
       }
       input_buf = dst;
-      input_size_bytes = num_elements;
     } else {
       AndroidBitmap_unlockPixels(env, bitmap);
       ThrowIllegalState(env, "Unsupported input type for runPixels: " +
@@ -1144,6 +1269,13 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
   AndroidBitmap_unlockPixels(env, bitmap);
 
   auto t_prep = std::chrono::high_resolution_clock::now();
+  long long us_preprocess =
+      std::chrono::duration_cast<std::chrono::microseconds>(t_prep -
+                                                            t_preprocess_start)
+          .count();
+  if (ENABLE_LOGS)
+    LOGI("预处理耗时: %lld us (%s)", us_preprocess,
+         rga_success ? "RGA" : "CPU");
 
   bool using_zero_copy =
       holder->input_mem && input_buf == holder->input_mem->virt_addr;
@@ -1170,8 +1302,7 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
 
     ret = rknn_inputs_set(holder->ctx, 1, inputs);
     if (ret != RKNN_SUCC) {
-      ThrowIllegalState(env,
-                        "rknn_inputs_set failed: " + std::to_string(ret));
+      ThrowIllegalState(env, "rknn_inputs_set failed: " + std::to_string(ret));
       return nullptr;
     }
   }
@@ -1185,6 +1316,11 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
   }
 
   auto t_run = std::chrono::high_resolution_clock::now();
+  long long us_infer =
+      std::chrono::duration_cast<std::chrono::microseconds>(t_run - t_set)
+          .count();
+  if (ENABLE_LOGS)
+    LOGI("模型推理耗时: %lld us", us_infer);
 
   const rknn_tensor_attr &out_attr = holder->output_attrs[0];
   const size_t out_elems = out_attr.n_elems;
@@ -1201,11 +1337,11 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
   std::memset(rknn_outputs, 0, sizeof(rknn_outputs));
   rknn_outputs[0].want_float = use_quant_output ? 0 : 1;
   rknn_outputs[0].is_prealloc = 1;
-  rknn_outputs[0].buf = use_quant_output
-                            ? static_cast<void *>(holder->quant_output_buffer.data())
-                            : static_cast<void *>(output.data());
-  rknn_outputs[0].size = use_quant_output ? out_attr.size
-                                          : out_elems * sizeof(float);
+  rknn_outputs[0].buf =
+      use_quant_output ? static_cast<void *>(holder->quant_output_buffer.data())
+                       : static_cast<void *>(output.data());
+  rknn_outputs[0].size =
+      use_quant_output ? out_attr.size : out_elems * sizeof(float);
 
   ret = rknn_outputs_get(holder->ctx, 1, rknn_outputs, nullptr);
   if (ret != RKNN_SUCC) {
@@ -1404,6 +1540,9 @@ Java_com_google_mediapipe_examples_poselandmarker_RknnRunner_nativeRunBitmapWith
     LOGI("Profile: Prep=%lld us, Set=%lld us, Run=%lld us, Get=%lld us, "
          "Post=%lld us, Total=%lld us",
          us_prep, us_set, us_run, us_get, us_post, us_total);
+
+  if (ENABLE_LOGS)
+    LOGI("视频帧处理完成");
 
   return resultArray;
 }

@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.poselandmarker
+package com.yolo.pose.demo
 
 import android.R.attr.value
 import android.content.Context
@@ -66,8 +66,20 @@ class PoseLandmarkerHelper(
     var useQuantOutput: Boolean = false
     var cacheableInput: Boolean = true
 
+    // Jump thresholds exposed in UI
+    var jumpUpThreshold: Float = 0.60f
+    var jumpDownThreshold: Float = 0.35f
+
     init {
         setupPoseLandmarker()
+    }
+
+    fun setJumpThresholds(up: Float, down: Float) {
+        jumpUpThreshold = up
+        jumpDownThreshold = down
+        // Update all active counters
+        ropeCounters.values.forEach { it.setThresholds(up, down) }
+        if (debugLogging) Log.d(TAG, "Updated jump thresholds: Up=$up, Down=$down")
     }
 
     fun clearPoseLandmarker() {
@@ -82,6 +94,8 @@ class PoseLandmarkerHelper(
 
     fun setupPoseLandmarker() {
         clearPoseLandmarker()
+        
+        // ... (rest of setupPoseLandmarker)
 
         val modelName = when (currentModel) {
             MODEL_YOLO8_TFLITE -> MODEL_FILE_YOLO8_TFLITE
@@ -144,7 +158,7 @@ class PoseLandmarkerHelper(
             Log.e(TAG, "Interpreter init failed", e)
         }
     }
-
+    
     fun setPerfOptions(useQuant: Boolean, cacheable: Boolean) {
         useQuantOutput = useQuant
         cacheableInput = cacheable
@@ -242,20 +256,18 @@ class PoseLandmarkerHelper(
     }
 
     private fun logPoseData(poses: List<Pose>, prefix: String) {
+        if (!debugLogging) return
         poses.forEachIndexed { index, pose ->
-            Log.i(TAG, "$prefix Pose #$index (id=${pose.id}): score=${pose.score}, box=${pose.boundingBox}")
-            pose.keypoints.forEachIndexed { kpIndex, kp ->
-                Log.i(TAG, "  Keypoint #$kpIndex: x=${kp.x}, y=${kp.y}, score=${kp.score}")
-            }
+            Log.d(TAG, "$prefix Pose #$index (id=${pose.id}): score=${pose.score}, box=${pose.boundingBox}")
         }
     }
-
-
-
+    
     // Helper to create a new counter
     private fun createCounter(): JumpRopeCounter {
         // New constructor only takes minIntervalMs (default 300)
-        return JumpRopeCounter(minIntervalMs = 300f)
+        val counter = JumpRopeCounter(minIntervalMs = 300f)
+        counter.setThresholds(jumpUpThreshold, jumpDownThreshold)
+        return counter
     }
 
     private fun updateCounterFromPoses(poses: List<Pose>, timestampMs: Double): List<Pose> {
@@ -265,12 +277,25 @@ class PoseLandmarkerHelper(
             return emptyList()
         }
 
+        // Step 1: Filter valid poses and Sort by Area (Descending)
+        // This ensures checking the largest/main subject first for tracking.
+        val validPosesWithIndex = poses.mapIndexed { index, pose -> Pair(index, pose) }
+            .filter { (_, pose) ->
+                val area = pose.boundingBox.width() * pose.boundingBox.height()
+                // Filter small boxes (noise) - 2% of screen area
+                area > 0.02f 
+            }
+            .sortedByDescending { (_, pose) -> 
+                 pose.boundingBox.width() * pose.boundingBox.height() 
+            }
+
+        // Step 2: Match to existing tracks
         val iouMatrix = mutableListOf<Triple<Int, Int, Float>>()
         activeTracks.forEachIndexed { trackIdx, track ->
-            poses.forEachIndexed { poseIdx, pose ->
+            validPosesWithIndex.forEach { (originalIndex, pose) ->
                 val iouVal = iou(track.rect, pose.boundingBox)
-                if (iouVal > 0.3f) {
-                    iouMatrix.add(Triple(trackIdx, poseIdx, iouVal))
+                if (iouVal > 0.2f) { // Slightly lower threshold for robustness
+                    iouMatrix.add(Triple(trackIdx, originalIndex, iouVal))
                 }
             }
         }
@@ -278,19 +303,20 @@ class PoseLandmarkerHelper(
         iouMatrix.sortByDescending { it.third }
 
         val matchedTrackIndices = mutableSetOf<Int>()
-        val assignedPoses = mutableSetOf<Int>()
+        val assignedPosesIndices = mutableSetOf<Int>()
         val poseToTrackMap = mutableMapOf<Int, Int>()
 
-        for ((trackIdx, poseIdx, _) in iouMatrix) {
-            if (trackIdx in matchedTrackIndices || poseIdx in assignedPoses) continue
+        for ((trackIdx, originalPoseIdx, _) in iouMatrix) {
+            if (trackIdx in matchedTrackIndices || originalPoseIdx in assignedPosesIndices) continue
             val track = activeTracks[trackIdx]
-            track.rect = poses[poseIdx].boundingBox
+            track.rect = poses[originalPoseIdx].boundingBox
             track.missingFrames = 0
             matchedTrackIndices.add(trackIdx)
-            assignedPoses.add(poseIdx)
-            poseToTrackMap[poseIdx] = track.id
+            assignedPosesIndices.add(originalPoseIdx)
+            poseToTrackMap[originalPoseIdx] = track.id
         }
 
+        // Step 3: Handle lost tracks
         for (i in activeTracks.indices) {
             if (i !in matchedTrackIndices) {
                 activeTracks[i].missingFrames++
@@ -304,13 +330,14 @@ class PoseLandmarkerHelper(
             if (debugLogging) Log.d(TAG, "Removed track $it due to missing frames")
         }
 
-        poses.forEachIndexed { poseIdx, pose ->
-            if (poseIdx !in assignedPoses) {
+        // Step 4: Create new tracks for unassigned VALID poses
+        validPosesWithIndex.forEach { (originalIndex, pose) ->
+            if (originalIndex !in assignedPosesIndices) {
                 val newId = nextTrackId++
                 activeTracks.add(Track(newId, pose.boundingBox, 0))
                 ropeCounters[newId] = createCounter()
-                poseToTrackMap[poseIdx] = newId
-                if (debugLogging) Log.d(TAG, "Created new track $newId for pose $poseIdx")
+                poseToTrackMap[originalIndex] = newId
+                if (debugLogging) Log.d(TAG, "Created new track $newId for pose #$originalIndex")
             }
         }
 

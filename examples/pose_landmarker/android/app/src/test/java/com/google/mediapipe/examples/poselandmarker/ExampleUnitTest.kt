@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.poselandmarker
+package com.yolo.pose.demo
 
 import org.junit.Test
 

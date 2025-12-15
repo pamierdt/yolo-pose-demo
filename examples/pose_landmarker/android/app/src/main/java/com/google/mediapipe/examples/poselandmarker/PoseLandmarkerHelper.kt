@@ -26,6 +26,8 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import com.yolo.jumprope.JumpRopeCounter
+import com.yolo.pose.detector.RknnRunner
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min

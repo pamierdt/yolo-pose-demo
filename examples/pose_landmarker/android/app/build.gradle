@@ -33,12 +33,6 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        externalNativeBuild {
-            cmake {
-                cppFlags "-std=c++17"
-            }
-        }
-
         ndk {
             abiFilters "arm64-v8a", "armeabi-v7a"
         }
@@ -48,6 +42,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -61,19 +56,6 @@ android {
     buildFeatures {
         viewBinding true
         mlModelBinding true
-    }
-
-    sourceSets {
-        main {
-            // Pick up prebuilt native libs under src/main/jni/<abi>/librknnrt.so
-            jniLibs.srcDirs = ['src/main/jni']
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path "src/main/cpp/CMakeLists.txt"
-        }
     }
 }
 
@@ -126,4 +108,25 @@ dependencies {
     implementation 'org.tensorflow:tensorflow-lite-gpu:2.17.0'
     // API artifact provides GpuDelegateFactory (split out from the runtime)
     implementation 'org.tensorflow:tensorflow-lite-gpu-api:2.17.0'
+
+    // ======== YOLO pose 点位识别 / 跳绳计数：优先使用 AAR，否则回退到源码 module ========
+    def poseDetectorAarRelease = file("libs/pose-detector-lib-release.aar")
+    def poseDetectorAarDebug = file("libs/pose-detector-lib-debug.aar")
+    if (poseDetectorAarRelease.exists()) {
+        implementation files(poseDetectorAarRelease)
+    } else if (poseDetectorAarDebug.exists()) {
+        implementation files(poseDetectorAarDebug)
+    } else {
+        implementation project(':pose-detector-lib')
+    }
+
+    def jumpropeCounterAarRelease = file("libs/jumprope-counter-lib-release.aar")
+    def jumpropeCounterAarDebug = file("libs/jumprope-counter-lib-debug.aar")
+    if (jumpropeCounterAarRelease.exists()) {
+        implementation files(jumpropeCounterAarRelease)
+    } else if (jumpropeCounterAarDebug.exists()) {
+        implementation files(jumpropeCounterAarDebug)
+    } else {
+        implementation project(':jumprope-counter-lib')
+    }
 }

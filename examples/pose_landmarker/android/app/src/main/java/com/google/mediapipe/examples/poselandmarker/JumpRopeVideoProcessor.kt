@@ -6,6 +6,7 @@ import android.graphics.RectF
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
+import com.yolo.jumprope.JumpRopeCounter
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt

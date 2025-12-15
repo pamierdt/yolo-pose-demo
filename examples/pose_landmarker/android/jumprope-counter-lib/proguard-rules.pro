@@ -12,3 +12,4 @@
 
 # Keep JumpRopeCounter class
 -keep class com.yolo.jumprope.JumpRopeCounter { *; }
+

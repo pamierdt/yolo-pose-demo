@@ -13,12 +13,12 @@ object NativeLibLoader {
 
             // Optional Rockchip RGA lib; load when it is packaged.
             try {
-                System.loadLibrary("rga")
+                System.loadLibrary("rga_dt")
             } catch (e: UnsatisfiedLinkError) {
-                Log.w(TAG, "librga.so not bundled; skipping RGA preload (${e.message})")
+                Log.w(TAG, "librga_dt.so not bundled; skipping RGA preload (${e.message})")
             }
 
-            System.loadLibrary("rknnrt")
+            System.loadLibrary("rknnrt_dt")
             System.loadLibrary("rknn_jni")
             loaded = true
         }

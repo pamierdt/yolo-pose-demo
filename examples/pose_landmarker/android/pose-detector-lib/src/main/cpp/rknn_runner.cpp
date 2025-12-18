@@ -134,7 +134,9 @@ size_t ElemSize(rknn_tensor_type type) {
   }
 }
 
-// Flush RKNN-managed input buffer so the NPU can read latest pixels
+// Validate RKNN-managed input buffer size/bounds.
+// Note: RKNN runtime 1.5.2 (librknnrt_dt.so) doesn't expose rknn_mem_sync(),
+// so this is a no-op beyond sanity checks for compatibility.
 bool SyncInputTensorMem(RknnHolder *holder, size_t used_bytes) {
   if (!holder->input_mem)
     return true;
@@ -145,12 +147,6 @@ bool SyncInputTensorMem(RknnHolder *holder, size_t used_bytes) {
   if (used_bytes > holder->input_tensor_bytes) {
     LOGE("Zero-copy input overflow: used=%zu, capacity=%zu", used_bytes,
          holder->input_tensor_bytes);
-    return false;
-  }
-  int ret =
-      rknn_mem_sync(holder->ctx, holder->input_mem, RKNN_MEMORY_SYNC_TO_DEVICE);
-  if (ret != RKNN_SUCC) {
-    LOGE("rknn_mem_sync failed: %d", ret);
     return false;
   }
   return true;
@@ -354,18 +350,11 @@ Java_com_yolo_pose_detector_RknnRunner_nativeInit(JNIEnv *env, jobject /*thiz*/,
         holder->input_attr.n_elems * ElemSize(holder->input_attr.type);
   }
 
-  if (g_input_mem_cacheable) {
-    holder->input_mem = rknn_create_mem(
-        holder->ctx, static_cast<uint32_t>(holder->input_tensor_bytes));
-  } else {
-    holder->input_mem = rknn_create_mem2(
-        holder->ctx, static_cast<uint64_t>(holder->input_tensor_bytes),
-        RKNN_FLAG_MEMORY_NON_CACHEABLE);
-    if (!holder->input_mem) {
-      holder->input_mem = rknn_create_mem(
-          holder->ctx, static_cast<uint32_t>(holder->input_tensor_bytes));
-    }
-  }
+  // RKNN 1.5.2 only provides rknn_create_mem(); newer APIs like rknn_create_mem2
+  // are not available in the downgraded runtime.
+  holder->input_mem =
+      rknn_create_mem(holder->ctx,
+                      static_cast<uint32_t>(holder->input_tensor_bytes));
   if (!holder->input_mem) {
     LOGE("rknn_create_mem failed, zero-copy disabled");
   } else {
@@ -379,10 +368,9 @@ Java_com_yolo_pose_detector_RknnRunner_nativeInit(JNIEnv *env, jobject /*thiz*/,
     } else {
       holder->rga_initialized = true;
       if (ENABLE_LOGS)
-        LOGI("Zero-copy input ready: phys=%p, bytes=%zu, w_stride=%u (%s)",
+        LOGI("Zero-copy input ready: phys=%p, bytes=%zu, w_stride=%u (create_mem)",
              reinterpret_cast<void *>(holder->input_mem->phys_addr),
-             holder->input_tensor_bytes, holder->input_attr.w_stride,
-             g_input_mem_cacheable ? "cacheable" : "non-cacheable");
+             holder->input_tensor_bytes, holder->input_attr.w_stride);
     }
   }
 
@@ -448,7 +436,8 @@ Java_com_yolo_pose_detector_RknnRunner_nativeRun(JNIEnv *env, jobject /*thiz*/,
     } else {
       std::memcpy(holder->input_mem->virt_addr, input_ptr, copy_size);
       if (!SyncInputTensorMem(holder, copy_size)) {
-        ThrowIllegalState(env, "rknn_mem_sync failed for input buffer");
+        ThrowIllegalState(env,
+                          "Zero-copy input buffer validation failed for input");
         return nullptr;
       }
     }
@@ -681,7 +670,8 @@ Java_com_yolo_pose_detector_RknnRunner_nativeRunPixels(JNIEnv *env,
   int ret = RKNN_SUCC;
   if (using_zero_copy) {
     if (!SyncInputTensorMem(holder, input_size_bytes)) {
-      ThrowIllegalState(env, "rknn_mem_sync failed for runPixels");
+      ThrowIllegalState(env,
+                        "Zero-copy input buffer validation failed for pixels");
       return nullptr;
     }
   } else {
@@ -1199,7 +1189,8 @@ Java_com_yolo_pose_detector_RknnRunner_nativeRunBitmapWithNms(
   int ret = RKNN_SUCC;
   if (using_zero_copy) {
     if (!SyncInputTensorMem(holder, input_size_bytes)) {
-      ThrowIllegalState(env, "rknn_mem_sync failed for bitmap input");
+      ThrowIllegalState(
+          env, "Zero-copy input buffer validation failed for bitmap input");
       return nullptr;
     }
   } else {

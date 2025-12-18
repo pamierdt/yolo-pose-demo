@@ -17,13 +17,13 @@ add_library(
 # Import prebuilt RKNN runtime library
 add_library(rknnrt SHARED IMPORTED)
 set_target_properties(rknnrt PROPERTIES
-    IMPORTED_LOCATION "${JNI_DIR}/${ANDROID_ABI}/librknnrt_dt.so"
+    IMPORTED_LOCATION "${JNI_DIR}/${ANDROID_ABI}/librknnrt.so"
 )
 
 # Import prebuilt RGA library for hardware acceleration
 add_library(rga SHARED IMPORTED)
 set_target_properties(rga PROPERTIES
-    IMPORTED_LOCATION "${JNI_DIR}/${ANDROID_ABI}/librga_dt.so"
+    IMPORTED_LOCATION "${JNI_DIR}/${ANDROID_ABI}/librga.so"
 )
 
 # Include directories

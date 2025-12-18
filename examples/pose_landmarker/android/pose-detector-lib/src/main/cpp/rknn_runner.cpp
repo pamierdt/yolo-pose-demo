@@ -135,7 +135,7 @@ size_t ElemSize(rknn_tensor_type type) {
 }
 
 // Validate RKNN-managed input buffer size/bounds.
-// Note: RKNN runtime 1.5.2 (librknnrt_dt.so) doesn't expose rknn_mem_sync(),
+// Note: RKNN runtime 1.5.2 (librknnrt.so) doesn't expose rknn_mem_sync(),
 // so this is a no-op beyond sanity checks for compatibility.
 bool SyncInputTensorMem(RknnHolder *holder, size_t used_bytes) {
   if (!holder->input_mem)

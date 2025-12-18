@@ -27,14 +27,14 @@ class RknnRunner(modelBuffer: ByteBuffer) : AutoCloseable {
             try {
                 // Load RGA library (optional, for hardware acceleration)
                 try {
-                    System.loadLibrary("rga_dt")
+                    System.loadLibrary("rga")
                     Log.d(TAG, "RGA library loaded successfully")
                 } catch (e: UnsatisfiedLinkError) {
                     Log.w(TAG, "RGA library not available, using software fallback")
                 }
                 
                 // Load RKNN runtime
-                System.loadLibrary("rknnrt_dt")
+                System.loadLibrary("rknnrt")
                 Log.d(TAG, "RKNN runtime loaded successfully")
                 
                 // Load pose detector library

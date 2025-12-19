@@ -33,9 +33,9 @@ public:
   /**
    * 状态机定义 / State Machine Definition
    *
-   * STATE_GROUND    (0): 地面状态，等待起跳 / On ground, waiting for jump
-   * STATE_ASCENDING (1): 上升状态，正在起跳 / Ascending, jumping up
-   * STATE_DESCENDING(2): 下降状态，正在落地 / Descending, landing
+   * STATE_CALIBRATING (0): 校准状态，初始化地面基准 / Calibrating, initializing ground baseline
+   * STATE_GROUND      (1): 地面状态，等待起跳 / On ground, waiting for jump (Valley)
+   * STATE_AIR         (2): 腾空状态，在空中 / In air (Peak)
    *
    * 状态转换 / State Transitions:
    * GROUND -> AIR: 髋部抬升超过自适应波峰的60% / Lift > 60% of Adaptive Peak
@@ -154,6 +154,7 @@ private:
   double lastJumpTime;   // 上次计数时间戳（毫秒）/ Last count timestamp (ms)
   double airStartTime;   // 腾空开始时间戳 / Air start timestamp
   float currentJumpPeak; // 当前跳跃高度自适应包络 / Adaptive jump peak envelope
+  float currentJumpMaxLift; // 本次跳跃的最大抬升高度 / Max lift of current jump
   float maxAnkleLiftInAir; // 腾空期间最大踝部抬升 / Max ankle lift during air
                            // state
   bool isJumpValid;        // 本次跳跃是否有效 / Is current jump valid
@@ -243,6 +244,8 @@ private:
 
   // ========== 优化：姿态验证 / Optimization: Pose Validation ==========
   bool checkPoseValidity(float shoulderY, float hipY, float ankleY);
+  int consecutiveInvalidFrames = 0; // 连续无效帧计数 / Consecutive invalid frames
+  static const int MAX_INVALID_FRAMES = 3; // 允许的最大连续无效帧 / Max allowed consecutive invalid frames
 };
 
 #endif // JUMP_ROPE_COUNTER_H

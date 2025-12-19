@@ -26,9 +26,11 @@ JumpRopeCounter::JumpRopeCounter(float minIntervalMs)
     : minInterval(minIntervalMs), state(STATE_CALIBRATING), count(0),
       groundY(0.0f), ankleGroundY(0.0f), lastJumpTime(0.0),
       currentJumpPeak(0.1f), // Default initial peak estimate
+      currentJumpMaxLift(0.0f), // Initialize current jump max lift
       maxAnkleLiftInAir(0.0f), isJumpValid(false), airStartTime(0.0),
       historyIndex(0), historyCount(0), calibrationCounter(0),
-      calibrationHipSum(0.0f), calibrationAnkleSum(0.0f), postCalibCounter(0) {
+      calibrationHipSum(0.0f), calibrationAnkleSum(0.0f), postCalibCounter(0),
+      consecutiveInvalidFrames(0) {
   hipSmoother.reset();
   shoulderSmoother.reset();
   ankleSmoother.reset();
@@ -49,6 +51,7 @@ void JumpRopeCounter::reset() {
   ankleGroundY = 0.0f;
   lastJumpTime = 0.0;
   currentJumpPeak = 0.1f;
+  currentJumpMaxLift = 0.0f;
   maxAnkleLiftInAir = 0.0f;
   isJumpValid = false;
   airStartTime = 0.0;
@@ -66,6 +69,7 @@ void JumpRopeCounter::reset() {
   historyCount = 0;
   hasPrevShoulder = false;
   prevShoulderY = 0.0f;
+  consecutiveInvalidFrames = 0;
 
   if (ENABLE_LOGS) {
     LOGI("JumpRopeCounter reset");
@@ -93,13 +97,31 @@ void JumpRopeCounter::reset() {
 int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
                             double timestampMs) {
   // ========== 优化：姿态验证 / Pose Validation ==========
-  if (!checkPoseValidity(shoulderY, hipY, ankleY)) {
+  // 坐标边界检查 / Coordinate boundary check
+  if (shoulderY < -0.1f || shoulderY > 1.1f || 
+      hipY < -0.1f || hipY > 1.1f || 
+      ankleY < -0.1f || ankleY > 1.1f) {
     if (ENABLE_DEBUG_LOGS) {
-      LOGW("Invalid pose detected: s=%.3f, h=%.3f, a=%.3f", shoulderY, hipY,
-           ankleY);
+      LOGW("Coordinates out of valid range: s=%.3f, h=%.3f, a=%.3f", 
+           shoulderY, hipY, ankleY);
     }
-    // 如果姿态无效，保持当前计数，不更新状态
-    return count;
+    consecutiveInvalidFrames++;
+    if (consecutiveInvalidFrames >= MAX_INVALID_FRAMES) {
+      return count;
+    }
+  } else if (!checkPoseValidity(shoulderY, hipY, ankleY)) {
+    consecutiveInvalidFrames++;
+    if (ENABLE_DEBUG_LOGS) {
+      LOGW("Invalid pose detected (%d consecutive): s=%.3f, h=%.3f, a=%.3f", 
+           consecutiveInvalidFrames, shoulderY, hipY, ankleY);
+    }
+    // 允许少量连续无效帧 / Allow a few consecutive invalid frames
+    if (consecutiveInvalidFrames >= MAX_INVALID_FRAMES) {
+      return count;
+    }
+  } else {
+    // 姿态有效，重置计数器 / Valid pose, reset counter
+    consecutiveInvalidFrames = 0;
   }
 
   // ========== 优化：多帧平滑 / Multi-frame Smoothing ==========
@@ -145,7 +167,8 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
   // ========== 1. 计算动态阈值 ==========
   // 基于躯干长度（肩到髋的距离）计算跳跃判定阈值
   // 优化：使用自适应系数
-  float trunkLen = std::abs(smoothHipY - smoothShoulderY);
+  // 姿态验证已确保 hipY > shoulderY，因此不需要 abs()
+  float trunkLen = smoothHipY - smoothShoulderY;
   float adaptiveCoef = getAdaptiveThresholdCoefficient();
   float threshold = trunkLen * adaptiveCoef;
 
@@ -189,16 +212,21 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
 
   // ========== 4. 状态机逻辑 (Peak Detection with Hysteresis) ==========
 
-  // 自适应波峰包络：每一帧衰减 1% (适应疲劳)，如果当前Lift更高则更新
-  // Adaptive Peak Envelope: Decay 1% per frame, update if current Lift is
-  // higher
-  currentJumpPeak *= 0.99f;
+  // 自适应波峰包络：只在腾空状态衰减，防止地面休息时波峰过度衰减
+  // Adaptive Peak Envelope: Only decay during AIR state to prevent excessive decay during ground rest
+  if (state == STATE_AIR) {
+    // 腾空时每帧衰减 1% (适应疲劳) / Decay 1% per frame during air (fatigue adaptation)
+    currentJumpPeak *= 0.99f;
+  }
+  
+  // 更新波峰包络 / Update peak envelope
   if (currentLift > currentJumpPeak) {
     currentJumpPeak = currentLift;
   }
+  
   // 限制波峰下限，防止微小抖动触发
   // 优化：针对小幅度动作，降低最小波峰限制
-  // 原值: threshold * 2.0f -> 新值: threshold * 1.5f
+  // Minimum peak threshold to prevent false triggers from micro-movements
   if (currentJumpPeak < threshold * 1.5f) {
     currentJumpPeak = threshold * 1.5f;
   }
@@ -214,6 +242,7 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
     if (currentLift > upThreshold) {
       state = STATE_AIR;
       airStartTime = timestampMs; // Start air timer
+      currentJumpMaxLift = currentLift; // 初始化本次跳跃最大抬升 / Initialize current jump max lift
       maxAnkleLiftInAir = 0.0f;   // 重置腾空期间的最大踝部抬升（仅日志）
 
       // 不使用踝部验证，直接标记为有效，依靠迟滞防抖
@@ -232,6 +261,11 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
     if (ankleLift > maxAnkleLiftInAir) {
       maxAnkleLiftInAir = ankleLift;
     }
+    
+    // 持续更新本次跳跃的最大抬升高度 / Continuously update max lift of current jump
+    if (currentLift > currentJumpMaxLift) {
+      currentJumpMaxLift = currentLift;
+    }
 
     // Hysteresis Down Trigger: Lift drops below Down Threshold
     if (currentLift < downThreshold) {
@@ -247,13 +281,18 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
         // ==================== 动态参数调整 / Dynamic Adjustment
         // ====================
         // 1. 动态运动幅度 (Dynamic Amplitude):
-        // 每次成功计数时，用本次真实高度 aggressively 更新阈值 (Weight 0.3)
-        // Aggressively update peak envelope with actual jump height
-        float jumpHeight = currentJumpPeak; // currentJumpPeak stores the max lift relative to ground
+        // 使用本次跳跃的真实最大高度来更新自适应阈值
+        // Use actual max lift of this jump to update adaptive threshold
+        float jumpHeight = currentJumpMaxLift; // Use actual max lift recorded during this jump
         if (jumpHeight < 0)
           jumpHeight = 0;
         
         addJumpHeight(jumpHeight); // Add to history for adaptive threshold
+        
+        if (ENABLE_DEBUG_LOGS) {
+          LOGD("Jump height recorded: %.3f (Peak envelope: %.3f)", 
+               jumpHeight, currentJumpPeak);
+        }
 
         // Use currentLift (which is relative to ground) as the "actual peak" of
         // this jump But since we are landing now, we don't have the peak value
@@ -350,7 +389,15 @@ bool JumpRopeCounter::checkPoseValidity(float shoulderY, float hipY,
   // 1. 生理学合理性检查 (Y轴向下)
   // 肩部应该在髋部上方 (shoulderY < hipY)
   // 髋部应该在踝部上方 (hipY < ankleY)
-  if (shoulderY >= hipY || hipY >= ankleY) {
+  // 优化：允许小误差范围，防止YOLO Pose估计抖动导致检测失败
+  // Allow small error margin to handle YOLO Pose estimation jitter
+  const float epsilon = 0.01f; // 约 1% 屏幕高度的误差容忍
+  
+  if (shoulderY >= hipY + epsilon) {
+    return false;
+  }
+  
+  if (hipY >= ankleY + epsilon) {
     return false;
   }
 

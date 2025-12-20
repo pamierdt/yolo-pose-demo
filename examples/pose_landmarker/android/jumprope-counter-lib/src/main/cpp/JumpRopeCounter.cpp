@@ -212,11 +212,15 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
 
   // ========== 4. 状态机逻辑 (Peak Detection with Hysteresis) ==========
 
-  // 自适应波峰包络：只在腾空状态衰减，防止地面休息时波峰过度衰减
-  // Adaptive Peak Envelope: Only decay during AIR state to prevent excessive decay during ground rest
+  // 自适应波峰包络：腾空时快速衰减，地面时极缓慢衰减
+  // Adaptive Peak Envelope: Fast decay during AIR, very slow decay during GROUND
   if (state == STATE_AIR) {
     // 腾空时每帧衰减 1% (适应疲劳) / Decay 1% per frame during air (fatigue adaptation)
     currentJumpPeak *= 0.99f;
+  } else if (state == STATE_GROUND) {
+    // 地面时每帧衰减 0.2%（防止长时间休息后阈值过高，但保持对小幅度跳跃的敏感性）
+    // Very slow decay 0.2% per frame on ground (balance between preventing high threshold and maintaining sensitivity)
+    currentJumpPeak *= 0.998f;
   }
   
   // 更新波峰包络 / Update peak envelope
@@ -225,10 +229,10 @@ int JumpRopeCounter::update(float shoulderY, float hipY, float ankleY,
   }
   
   // 限制波峰下限，防止微小抖动触发
-  // 优化：针对小幅度动作，降低最小波峰限制
-  // Minimum peak threshold to prevent false triggers from micro-movements
-  if (currentJumpPeak < threshold * 1.5f) {
-    currentJumpPeak = threshold * 1.5f;
+  // 优化：针对小幅度动作，显著降低最小波峰限制以支持小幅度跳跃
+  // Minimum peak threshold - lowered to support small amplitude jumps
+  if (currentJumpPeak < threshold * 0.8f) {
+    currentJumpPeak = threshold * 0.8f;
   }
 
   // 使用可配置的阈值比例 / Use configurable threshold ratios
@@ -421,9 +425,9 @@ void JumpRopeCounter::addJumpHeight(float height) {
 }
 
 float JumpRopeCounter::getAdaptiveThresholdCoefficient() const {
-  // 如果没有历史数据，使用默认值
+  // 如果没有历史数据，使用较小的默认值以支持小幅度跳跃
   if (historyCount == 0)
-    return 0.10f;
+    return 0.08f; // 从 0.10 降低到 0.08
 
   // 计算平均跳跃高度
   float sum = 0.0f;
@@ -438,14 +442,16 @@ float JumpRopeCounter::getAdaptiveThresholdCoefficient() const {
   // 大幅度跳跃 (> 0.15) -> 提高阈值 0.12
   // 
   // 优化：针对“动作幅度比较小”的情况，进一步放宽下限
+  if (avgHeight < 0.02f)
+    return 0.025f; // 极小幅度跳跃（离地 < 2cm）
   if (avgHeight < 0.03f)
-    return 0.04f; // 极小幅度跳跃支持
+    return 0.03f;  // 很小幅度跳跃（离地 2-3cm）
   if (avgHeight < 0.05f)
-    return 0.06f; // 小幅度跳跃优化
+    return 0.04f;  // 小幅度跳跃（离地 3-5cm）
   if (avgHeight > 0.15f)
-    return 0.12f;
+    return 0.12f;  // 大幅度跳跃
 
-  return 0.10f;
+  return 0.08f; // 中等幅度默认值（从 0.10 降低）
 }
 
 int JumpRopeCounter::getCount() const { return count; }

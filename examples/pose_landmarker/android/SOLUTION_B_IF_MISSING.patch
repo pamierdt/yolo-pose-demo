@@ -1,0 +1,62 @@
+# 方案 B：如果是漏判过多（跳了不计数）
+
+## 问题诊断
+如果你的问题是：
+- 明明跳了但没计数
+- 小幅度跳跃检测不到
+- 连续跳跃时漏掉部分
+
+那么需要降低检测阈值。
+
+## 修复方案
+
+### 选项 1: 降低起跳阈值比例（推荐）
+
+在创建计数器后立即调用：
+
+```kotlin
+// PoseLandmarkerHelper.kt 的 createCounter() 函数中
+private fun createCounter(): JumpRopeCounter {
+    val counter = JumpRopeCounter(minIntervalMs = 300f)
+    counter.setThresholds(
+        0.55f,  // 从默认的 0.60 降低到 0.55
+        0.35f   // 保持 0.35
+    )
+    return counter
+}
+```
+
+或者在 PoseLandmarkerHelper.kt 的 init 代码块中：
+
+```kotlin
+var jumpUpThreshold: Float = 0.55f    // 改为 0.55
+var jumpDownThreshold: Float = 0.35f  // 保持
+```
+
+### 选项 2: 增加姿态验证容忍度
+
+修改 JumpRopeCounter.h 第 251 行：
+
+```cpp
+// 从
+static const int MAX_INVALID_FRAMES = 3;
+
+// 改为
+static const int MAX_INVALID_FRAMES = 5;
+```
+
+### 选项 3: 降低最小波峰限制
+
+修改 JumpRopeCounter.cpp 自适应阈值系数：
+
+```cpp
+// getAdaptiveThresholdCoefficient() 函数中
+if (avgHeight < 0.03f)
+    return 0.03f; // 从 0.04 降低到 0.03
+if (avgHeight < 0.05f)
+    return 0.05f; // 从 0.06 降低到 0.05
+```
+
+## 应用方案
+
+请告诉我具体情况，我可以应用相应的修复。

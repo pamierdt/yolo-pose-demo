@@ -6,3 +6,6 @@
 # Keep RknnRunner class and its methods
 -keep class com.yolo.pose.detector.RknnRunner { *; }
 
+
+
+

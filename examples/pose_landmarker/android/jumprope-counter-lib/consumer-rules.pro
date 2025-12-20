@@ -7,3 +7,6 @@
 -keep class com.yolo.jumprope.JumpRopeCounter { *; }
 
 
+
+
+

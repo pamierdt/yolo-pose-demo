@@ -68,9 +68,9 @@ class PoseLandmarkerHelper(
     var useQuantOutput: Boolean = false
     var cacheableInput: Boolean = true
 
-    // Jump thresholds exposed in UI
-    var jumpUpThreshold: Float = 0.60f
-    var jumpDownThreshold: Float = 0.35f
+    // Jump thresholds exposed in UI - 降低默认值以支持小幅度跳跃
+    var jumpUpThreshold: Float = 0.50f
+    var jumpDownThreshold: Float = 0.30f
 
     init {
         setupPoseLandmarker()

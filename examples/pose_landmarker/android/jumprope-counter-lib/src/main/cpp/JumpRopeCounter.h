@@ -138,8 +138,9 @@ private:
   int count;   // 跳跃计数 / Jump count
 
   // ========== 阈值参数 / Threshold Parameters ==========
-  float upThresholdRatio = 0.60f;   // 起跳阈值比例 / Jump up threshold ratio
-  float downThresholdRatio = 0.35f; // 落地阈值比例 / Land down threshold ratio
+  // 优化：降低默认阈值以支持小幅度跳跃
+  float upThresholdRatio = 0.50f;   // 起跳阈值比例 / Jump up threshold ratio (从0.60降低到0.50)
+  float downThresholdRatio = 0.30f; // 落地阈值比例 / Land down threshold ratio (从0.35降低到0.30)
 
   // ========== 基准线 / Baselines ==========
   float groundY; // 髋部地面基准（动态更新）/ Hip ground baseline (dynamically

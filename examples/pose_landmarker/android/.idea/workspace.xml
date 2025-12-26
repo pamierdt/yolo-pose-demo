@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AndroidLayouts">
+    <shared>
+      <config />
+    </shared>
+    <layouts>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_baseline_add_24.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_baseline_photo_camera_24.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_baseline_photo_library_24.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_minus.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/drawable/ic_plus.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/drawable/media_pipe_banner.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/layout/activity_main.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/layout/fragment_camera.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/layout/fragment_gallery.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/layout/info_bottom_sheet.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+      <layout url="file://$PROJECT_DIR$/app/src/main/res/menu/menu_bottom_nav.xml">
+        <config>
+          <theme>@style/AppTheme</theme>
+        </config>
+      </layout>
+    </layouts>
+  </component>
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="399da4b5-56f2-4502-932f-53d0011bd8e0" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../../../.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../../README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/ALGORITHM_FIX_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DEBUG_GUIDE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/QUICK_REFERENCE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SMALL_AMPLITUDE_FIX.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SOLUTION_B_IF_MISSING.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/TEST_CHECKLIST.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/download_tasks.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/proguard-rules.pro" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/androidTest/java/com/google/mediapipe/examples/poselandmarker/ExampleInstrumentedTest.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/assets/pose_landmarker_heavy.task" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/assets/pose_landmarker_lite.task" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/assets/yolo11n-pose-rk3568.rknn" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/assets/yolov8n-pose-rk3568.rknn" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/JumpRopeVideoProcessor.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/MainActivity.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/MainViewModel.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/OverlayView.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/PoseLandmarkerHelper.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/fragment/CameraFragment.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/fragment/GalleryFragment.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/google/mediapipe/examples/poselandmarker/fragment/PermissionsFragment.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/color/bg_nav_item.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/ic_baseline_add_24.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/ic_baseline_photo_camera_24.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/ic_baseline_photo_library_24.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/ic_minus.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/ic_plus.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/icn_chevron_up.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/drawable/media_pipe_banner.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/layout/activity_main.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/layout/fragment_camera.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/layout/fragment_gallery.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/layout/info_bottom_sheet.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/menu/menu_bottom_nav.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-hdpi/ic_launcher.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-hdpi/ic_launcher_round.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-mdpi/ic_launcher.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-mdpi/ic_launcher_round.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-xhdpi/ic_launcher.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-xxhdpi/ic_launcher.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/navigation/nav_graph.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/values/colors.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/values/dimens.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/values/strings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/res/values/styles.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/test/java/com/google/mediapipe/examples/poselandmarker/ExampleUnitTest.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradle.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradlew" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradlew.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/JumpRopeCounter.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/consumer-rules.pro" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/proguard-rules.pro" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/src/main/AndroidManifest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/src/main/cpp/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/src/main/cpp/JumpRopeCounter.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/src/main/cpp/JumpRopeCounter.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/src/main/cpp/jni_bridge.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jumprope-counter-lib/src/main/java/com/yolo/jumprope/JumpRopeCounter.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/PoseDetector.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/consumer-rules.pro" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/proguard-rules.pro" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/AndroidManifest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/GrallocOps.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/RgaMutex.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/RgaSingleton.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/RgaUtils.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_buffer.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_common.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_expand.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_mpi.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_single.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_task.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_type.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/im2d_version.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rga/rga.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rknn_api.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include/rknn_matmul_api.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/rknn_runner.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/java/com/yolo/pose/detector/RknnRunner.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/arm64-v8a/librga.so" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/arm64-v8a/librknnrt.so" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/armeabi-v7a/librga.so" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/armeabi-v7a/librknnrt.so" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pose_landmarker.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_build.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/跳绳计数算法.md" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[DeviceId(pluginId=Default, isTemplate=false, identifier=serial=192.168.9.70:5555;connection=9b868509)]" />
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="Pose Landmarker" type="f1a62948:ProjectNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../../.." />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
+  <component name="ProjectId" id="358H7n2S67Fq2GYNn7Ke2bu0irc" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Android App.app.executor": "Run",
+    "Gradle.Download Sources.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "com.google.services.firebase.aqiPopupShown": "true",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/dingtao/yolo-pose-demo/examples/pose_landmarker/android/app/src/main/assets",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.17",
+    "project.structure.side.proportion": "0.45284975",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle",
+    "show.do.not.copy.http.proxy.settings.to.gradle": "false"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/app/src/main/assets" />
+      <recent name="$PROJECT_DIR$/app/libs" />
+      <recent name="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/armeabi-v7a" />
+      <recent name="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/arm64-v8a" />
+      <recent name="$PROJECT_DIR$/app/src/main/cpp" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/app/src/main/assets" />
+      <recent name="$PROJECT_DIR$/pose-detector-lib/src/main/jniLibs/arm64-v8a" />
+      <recent name="$PROJECT_DIR$/pose-detector-lib/src/main/cpp/include" />
+      <recent name="$PROJECT_DIR$/jumprope-counter-lib/build" />
+      <recent name="$PROJECT_DIR$/app/libs" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="app" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
+      <module name="Pose_Landmarker.app" />
+      <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
+      <option name="DEPLOY" value="true" />
+      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+      <option name="DEPLOY_AS_INSTANT" value="false" />
+      <option name="ARTIFACT_NAME" value="" />
+      <option name="PM_INSTALL_OPTIONS" value="" />
+      <option name="ALL_USERS" value="false" />
+      <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
+      <option name="ALLOW_ASSUME_VERIFIED" value="false" />
+      <option name="CLEAR_APP_STORAGE" value="false" />
+      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
+      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
+      <option name="MODE" value="default_activity" />
+      <option name="RESTORE_ENABLED" value="false" />
+      <option name="RESTORE_FILE" value="" />
+      <option name="RESTORE_FRESH_INSTALL_ONLY" value="false" />
+      <option name="CLEAR_LOGCAT" value="false" />
+      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
+      <option name="TARGET_SELECTION_MODE" value="DEVICE_AND_SNAPSHOT_COMBO_BOX" />
+      <option name="SELECTED_CLOUD_MATRIX_CONFIGURATION_ID" value="-1" />
+      <option name="SELECTED_CLOUD_MATRIX_PROJECT_ID" value="" />
+      <option name="DEBUGGER_TYPE" value="Auto" />
+      <Auto>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Auto>
+      <Hybrid>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Hybrid>
+      <Java>
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Java>
+      <Native>
+        <option name="USE_JAVA_AWARE_DEBUGGER" value="false" />
+        <option name="SHOW_STATIC_VARS" value="true" />
+        <option name="WORKING_DIR" value="" />
+        <option name="TARGET_LOGGING_CHANNELS" value="lldb process:gdb-remote packets" />
+        <option name="SHOW_OPTIMIZED_WARNING" value="true" />
+        <option name="ATTACH_ON_WAIT_FOR_DEBUGGER" value="false" />
+        <option name="DEBUG_SANDBOX_SDK" value="false" />
+      </Native>
+      <Profilers>
+        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Java/Kotlin Method Sample (legacy)" />
+        <option name="STARTUP_NATIVE_MEMORY_PROFILING_ENABLED" value="false" />
+        <option name="NATIVE_MEMORY_SAMPLE_RATE_BYTES" value="2048" />
+      </Profilers>
+      <option name="DEEP_LINK" value="" />
+      <option name="ACTIVITY" value="" />
+      <option name="ACTIVITY_CLASS" value="" />
+      <option name="SEARCH_ACTIVITY_IN_GLOBAL_SCOPE" value="false" />
+      <option name="SKIP_ACTIVITY_VALIDATION" value="false" />
+      <method v="2">
+        <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="399da4b5-56f2-4502-932f-53d0011bd8e0" name="Changes" comment="" />
+      <created>1762484613611</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762484613611</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="play_dynamic_filters_status">
+    <option name="appIdToCheckInfo">
+      <map>
+        <entry key="com.google.mediapipe.examples.poselandmarker">
+          <value>
+            <CheckInfo lastCheckTimestamp="1764141347136" />
+          </value>
+        </entry>
+        <entry key="com.google.mediapipe.examples.poselandmarker.test">
+          <value>
+            <CheckInfo lastCheckTimestamp="1764141347160" />
+          </value>
+        </entry>
+        <entry key="com.yolo.pose.demo">
+          <value>
+            <CheckInfo lastCheckTimestamp="1766654545358" />
+          </value>
+        </entry>
+        <entry key="com.yolo.pose.demo.test">
+          <value>
+            <CheckInfo lastCheckTimestamp="1766654545358" />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

@@ -1,9 +1,45 @@
-This repo hosts the official MediaPipe samples with a goal of showing the fundamental steps involved to create apps with our machine learning platform. 
+# YOLO Pose Landmark Android Demo
 
-External PRs for fixes are welcome, however new sample/demo PRs will likely be rejected to maintain the simplicity of this repo for ongoing maintenance. It is strongly recommended that contributors who are interested in submitting more complex samples or demos host their samples in their own public repos and create written tutorials to share with the community. Contributors can also submit these projects and tutorials to the [Google DevLibrary](https://devlibrary.withgoogle.com/)
+### Overview
 
+This is a camera app that can detects landmarks on a person either from continuous camera frames seen by your device's back camera, an image, or a video from the device's gallery using a YOLO pose **.tflite** model.
 
-MediaPipe Solutions streamlines on-device ML development and deployment with flexible low-code / no-code tools that provide the modular building blocks for creating custom high-performance solutions for cross-platform deployment. It consists of the following components:
-* MediaPipe Tasks (low-code): create and deploy custom e2e ML solution pipelines
-* MediaPipe Model Maker (low-code): create custom ML models from advanced solutions
-* MediaPipe Studio (no-code): create, evaluate, debug, benchmark, prototype, deploy advanced production-level solutions
+Place your YOLO pose model (for example, a `yolov8n-pose.tflite` export) into the app's *assets* directory and name it `yolo_pose.tflite` (or update the constant in `PoseLandmarkerHelper`). The Gradle script now only checks for the file and will print a warning if it is missing.
+
+This application should be run on a physical Android device to take advantage of the camera.
+
+![Pose Landmarker Demo](pose_landmarker.png?raw=true "Pose Landmarker Demo")
+[Public domain video from Lance Foss](https://www.youtube.com/watch?v=KALIKOd1pbA)
+
+## Build the demo using Android Studio
+
+### Prerequisites
+
+*   The **[Android Studio](https://developer.android.com/studio/index.html)** IDE. This sample has been tested on Android Studio Dolphin.
+
+*   A physical Android device with a minimum OS version of SDK 24 (Android 7.0 -
+    Nougat) with developer mode enabled. The process of enabling developer mode
+    may vary by device.
+
+### Building
+
+*   Open Android Studio. From the Welcome screen, select Open an existing
+    Android Studio project.
+
+*   From the Open File or Project window that appears, navigate to and select
+    the mediapipe/examples/pose_landmarker/android directory. Click OK. You may
+    be asked if you trust the project. Select Trust.
+
+*   If it asks you to do a Gradle Sync, click OK.
+
+*   With your Android device connected to your computer and developer mode
+    enabled, click on the green Run arrow in Android Studio.
+
+### Models used
+
+For Rockchip boards place the converted model `yolo11n-pose.rknn` under
+`app/src/main/assets` (or push it to `/sdcard/Download/` or
+`/data/local/tmp/`). The helper still keeps the TFLite pipeline, so make sure
+the file is either a compatible TFLite flatbuffer or provide an RKNN runtime
+implementation alongside the model. The Gradle task `verifyYoloModel` just
+emits a warning if the file is missing; no automatic downloads are performed.

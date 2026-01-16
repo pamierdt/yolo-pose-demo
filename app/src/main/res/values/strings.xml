@@ -44,6 +44,8 @@
     <string name="label_models">Model</string>
     <string name="label_quant_output">Use Quantized Output (fast)</string>
     <string name="label_cacheable_input">Cacheable Input Buffer</string>
+    <string name="switch_camera">Switch Camera</string>
+    <string name="select_camera">Select Camera</string>
 
     <string-array name="delegate_spinner_titles">
         <item>GPU</item>

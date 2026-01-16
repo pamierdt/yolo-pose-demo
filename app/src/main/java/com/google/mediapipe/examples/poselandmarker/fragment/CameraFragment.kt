@@ -16,8 +16,10 @@
 package com.yolo.pose.demo.fragment
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.res.Configuration
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
 import android.os.Bundle
 import android.util.Log
@@ -28,6 +30,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.camera.core.Preview
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -71,10 +74,20 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
     private var camera: Camera? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraFacing = CameraSelector.LENS_FACING_BACK
+    private var selectedCameraId: String? = null  // Track selected camera by ID
     private val targetResolution = Size(960, 640)
     @Volatile private var lastAnalysisResolution: Size? = null
     @Volatile private var lastAnalysisRotation: Int = 0
     private var debugLogsRemaining = 5
+
+    // Camera info data class
+    data class CameraInfo(
+        val id: String,
+        val lensFacing: Int,
+        val displayName: String
+    )
+
+    private val availableCameras = mutableListOf<CameraInfo>()
 
     /** Blocking ML operations are performed using this executor */
     private lateinit var backgroundExecutor: ExecutorService
@@ -174,6 +187,9 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
         // Attach listeners to UI control widgets
         initBottomSheetControls()
+
+        // Setup camera switch button
+        setupCameraSwitchButton()
     }
 
     private fun initBottomSheetControls() {
@@ -402,6 +418,143 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         }
     }
 
+    // Setup camera switch button
+    private fun setupCameraSwitchButton() {
+        fragmentCameraBinding.cameraSwitchButton.setOnClickListener {
+            Log.i(TAG, "Camera switch button clicked")
+            showCameraSelectionDialog()
+        }
+    }
+
+    // Enumerate all available cameras using Camera2 API directly
+    // This can detect more cameras than CameraX alone
+    @OptIn(ExperimentalCamera2Interop::class)
+    private fun enumerateCameras(provider: ProcessCameraProvider) {
+        availableCameras.clear()
+        
+        // 首先使用 Camera2 API 直接枚举所有摄像头
+        val cameraManager = requireContext().getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val camera2CameraIds = try {
+            cameraManager.cameraIdList.toSet()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get camera ID list from Camera2 API", e)
+            emptySet()
+        }
+        
+        // CameraX 可见的摄像头ID
+        val cameraXCameraIds = mutableSetOf<String>()
+        
+        Log.i(TAG, "Camera2 API reports ${camera2CameraIds.size} cameras: ${camera2CameraIds.joinToString()}")
+        Log.i(TAG, "CameraX reports ${provider.availableCameraInfos.size} cameras")
+
+        // 先添加 CameraX 能识别的摄像头
+        provider.availableCameraInfos.forEachIndexed { index, cameraInfo ->
+            try {
+                val camera2Info = Camera2CameraInfo.from(cameraInfo)
+                val cameraId = camera2Info.cameraId
+                cameraXCameraIds.add(cameraId)
+                
+                val lensFacing = camera2Info.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+                val facing = lensFacing ?: CameraCharacteristics.LENS_FACING_EXTERNAL
+                val displayName = when (facing) {
+                    CameraCharacteristics.LENS_FACING_BACK -> "后置摄像头 ($cameraId)"
+                    CameraCharacteristics.LENS_FACING_FRONT -> "前置摄像头 ($cameraId)"
+                    CameraCharacteristics.LENS_FACING_EXTERNAL -> "外接摄像头 ($cameraId)"
+                    else -> "摄像头 $cameraId"
+                }
+
+                val hardwareLevel = camera2Info.getCameraCharacteristic(
+                    CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL
+                )
+                val hardwareLevelStr = getHardwareLevelString(hardwareLevel)
+
+                availableCameras.add(CameraInfo(cameraId, facing, displayName))
+                Log.i(TAG, "[CameraX] Found: $displayName (ID: $cameraId, Facing: $facing, HW: $hardwareLevelStr)")
+            } catch (e: Exception) {
+                Log.w(TAG, "Error enumerating CameraX camera at index $index", e)
+            }
+        }
+
+        // 检查 Camera2 API 中有但 CameraX 没有的摄像头
+        val missingCameraIds = camera2CameraIds - cameraXCameraIds
+        if (missingCameraIds.isNotEmpty()) {
+            Log.w(TAG, "Found ${missingCameraIds.size} cameras not visible to CameraX: ${missingCameraIds.joinToString()}")
+            
+            for (cameraId in missingCameraIds) {
+                try {
+                    val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+                    val lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING)
+                        ?: CameraCharacteristics.LENS_FACING_EXTERNAL
+                    val hardwareLevel = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
+                    val hardwareLevelStr = getHardwareLevelString(hardwareLevel)
+                    
+                    val displayName = when (lensFacing) {
+                        CameraCharacteristics.LENS_FACING_BACK -> "后置摄像头* ($cameraId)"
+                        CameraCharacteristics.LENS_FACING_FRONT -> "前置摄像头* ($cameraId)"
+                        CameraCharacteristics.LENS_FACING_EXTERNAL -> "外接摄像头* ($cameraId)"
+                        else -> "摄像头* $cameraId"
+                    }
+                    
+                    // 标记为 Camera2-only 摄像头（CameraX 不支持）
+                    availableCameras.add(CameraInfo(cameraId, lensFacing, "$displayName [仅Camera2]"))
+                    Log.w(TAG, "[Camera2 Only] Found: $displayName (ID: $cameraId, Facing: $lensFacing, HW: $hardwareLevelStr)")
+                    Log.w(TAG, "  -> This camera may not work with CameraX. Consider using Camera2 API directly.")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get characteristics for camera $cameraId", e)
+                }
+            }
+        }
+        
+        Log.i(TAG, "Total cameras enumerated: ${availableCameras.size} (CameraX: ${cameraXCameraIds.size}, Camera2-only: ${missingCameraIds.size})")
+    }
+    
+    private fun getHardwareLevelString(hardwareLevel: Int?): String {
+        return when (hardwareLevel) {
+            CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY -> "LEGACY"
+            CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED -> "LIMITED"
+            CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL -> "FULL"
+            CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3 -> "LEVEL_3"
+            CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL -> "EXTERNAL"
+            else -> "UNKNOWN($hardwareLevel)"
+        }
+    }
+
+    // Show camera selection dialog
+    private fun showCameraSelectionDialog() {
+        Log.i(TAG, "showCameraSelectionDialog called, available cameras: ${availableCameras.size}")
+
+        if (availableCameras.isEmpty()) {
+            Toast.makeText(requireContext(), "没有可用的摄像头", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val cameraNames = availableCameras.map { it.displayName }.toTypedArray()
+        val currentIndex = availableCameras.indexOfFirst {
+            it.id == selectedCameraId
+        }.takeIf { it >= 0 } ?: 0
+
+        Log.i(TAG, "Showing dialog with ${cameraNames.size} cameras, current index: $currentIndex, current ID: $selectedCameraId")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.select_camera)
+            .setSingleChoiceItems(cameraNames, currentIndex) { dialog, which ->
+                val selectedCamera = availableCameras[which]
+                Log.i(TAG, "Camera selected: ${selectedCamera.displayName}, ID: ${selectedCamera.id}, facing: ${selectedCamera.lensFacing}")
+
+                if (selectedCamera.id != selectedCameraId) {
+                    selectedCameraId = selectedCamera.id
+                    cameraFacing = selectedCamera.lensFacing
+                    Log.i(TAG, "Switching to camera ID: ${selectedCamera.id}, calling bindCameraUseCases()")
+                    bindCameraUseCases()
+                } else {
+                    Log.i(TAG, "Same camera selected, no switch needed")
+                }
+                dialog.dismiss()
+      }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
     // Initialize CameraX, and prepare to bind the camera use cases
     private fun setUpCamera() {
         val cameraProviderFuture =
@@ -410,6 +563,9 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             {
                 // CameraProvider
                 cameraProvider = cameraProviderFuture.get()
+
+                // Enumerate all available cameras
+                cameraProvider?.let { enumerateCameras(it) }
 
                 // Build and bind the camera use cases
                 bindCameraUseCases()
@@ -467,19 +623,67 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         }
     }
 
+    @OptIn(ExperimentalCamera2Interop::class)
     private fun selectCamera(provider: ProcessCameraProvider): CameraSelector {
+        // If a specific camera ID is selected, try to use it
+        if (selectedCameraId != null) {
+            try {
+                val cameraInfo = provider.availableCameraInfos.find { info ->
+                    Camera2CameraInfo.from(info).cameraId == selectedCameraId
+                }
+
+                if (cameraInfo != null) {
+                    val camera2Info = Camera2CameraInfo.from(cameraInfo)
+                    val lensFacing = camera2Info.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+                    
+                    // 对于所有摄像头类型，使用 cameraId 过滤器确保选择正确的摄像头
+                    val filteredSelector = CameraSelector.Builder()
+                        .addCameraFilter { cameraInfoList ->
+                            cameraInfoList.filter { info ->
+                                Camera2CameraInfo.from(info).cameraId == selectedCameraId
+                            }
+                        }
+                        .build()
+
+                    // 验证选择器是否有效
+                    val filteredCameras = provider.availableCameraInfos.filter { info ->
+                        Camera2CameraInfo.from(info).cameraId == selectedCameraId
+                    }
+                    
+                    if (filteredCameras.isNotEmpty()) {
+                        Log.i(TAG, "Using selected camera ID: $selectedCameraId (lens facing: $lensFacing)")
+                        return filteredSelector
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Selected camera ID $selectedCameraId unavailable", e)
+            }
+        }
+
+        // Fallback: try to use the selected lens facing
+        try {
+            val selector = CameraSelector.Builder().requireLensFacing(cameraFacing).build()
+            if (provider.hasCamera(selector)) {
+                Log.i(TAG, "Using camera with lens facing = $cameraFacing")
+                return selector
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Camera with lens facing $cameraFacing unavailable", e)
+        }
+
+        // Fallback: try other cameras in order
         val orderedLensFacing = listOf(
-            CameraSelector.LENS_FACING_EXTERNAL,
-            cameraFacing,
             CameraSelector.LENS_FACING_BACK,
-            CameraSelector.LENS_FACING_FRONT
-        ).distinct()
+            CameraSelector.LENS_FACING_FRONT,
+            CameraSelector.LENS_FACING_EXTERNAL
+        ).filter { it != cameraFacing }
 
         for (lens in orderedLensFacing) {
             try {
                 val selector = CameraSelector.Builder().requireLensFacing(lens).build()
                 if (provider.hasCamera(selector)) {
-                    Log.i(TAG, "Using camera with lens facing = $lens")
+                    Log.i(TAG, "Falling back to camera with lens facing = $lens")
+                    cameraFacing = lens
                     return selector
                 }
             } catch (e: Exception) {
@@ -487,16 +691,31 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
             }
         }
 
-        val fallbackSelector = provider.availableCameraInfos.firstOrNull()?.let { info ->
-            val lensFacing = Camera2CameraInfo.from(info)
-                .getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
-            lensFacing?.let { facing ->
-                Log.i(TAG, "Falling back to first available camera, lens facing = $facing")
-                CameraSelector.Builder().requireLensFacing(facing).build()
+        // Last resort: use first available camera with ID-based selector
+        val firstCamera = provider.availableCameraInfos.firstOrNull()
+        if (firstCamera != null) {
+            try {
+                val camera2Info = Camera2CameraInfo.from(firstCamera)
+                val firstCameraId = camera2Info.cameraId
+                val lensFacing = camera2Info.getCameraCharacteristic(CameraCharacteristics.LENS_FACING)
+                
+                Log.i(TAG, "Using first available camera ID: $firstCameraId, lens facing = $lensFacing")
+                selectedCameraId = firstCameraId
+                cameraFacing = lensFacing ?: CameraCharacteristics.LENS_FACING_EXTERNAL
+                
+                return CameraSelector.Builder()
+                    .addCameraFilter { cameraInfoList ->
+                        cameraInfoList.filter { info ->
+                            Camera2CameraInfo.from(info).cameraId == firstCameraId
+                        }
+                    }
+                    .build()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create selector for first camera", e)
             }
         }
 
-        return fallbackSelector ?: CameraSelector.DEFAULT_BACK_CAMERA
+        return CameraSelector.DEFAULT_BACK_CAMERA
     }
 
     private fun detectPose(imageProxy: ImageProxy) {

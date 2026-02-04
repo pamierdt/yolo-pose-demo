@@ -1058,13 +1058,13 @@ class PoseLandmarkerHelper(
 
 
         const val MODEL_FILE_YOLO8_TFLITE = "yolov8n-pose_float32.tflite"
-        const val MODEL_FILE_YOLO8_RKNN = "yolov8n-pose-rk3568-fp16.rknn"
-        const val MODEL_FILE_YOLO8_RKNN_INT8 = "yolov8n-pose-rk3588-int8.rknn"
-        const val MODEL_FILE_YOLO8_RKNN_HYBRID = "yolov8n-pose-rk3568-hybrid.rknn"
+        const val MODEL_FILE_YOLO8_RKNN = "yolov8n-pose-rk3588.rknn"
+        const val MODEL_FILE_YOLO8_RKNN_INT8 = "yolov8n-pose-rk3588.rknn"
+        const val MODEL_FILE_YOLO8_RKNN_HYBRID = "yolov8n-pose-rk3588.rknn"
         const val MODEL_FILE_YOLO11_TFLITE = "yolo11n-pose_float32.tflite"
-        const val MODEL_FILE_YOLO11_RKNN = "yolo11n-pose-rk3568.rknn"
-        const val MODEL_FILE_YOLO8_RKNN_MIXED = "yolov8n-pose-rk3568-mixed.rknn"
-        const val MODEL_FILE_YOLO8_RKNN_CONSERVATIVE = "yolov8n-pose-rk3568-conservative.rknn"
+        const val MODEL_FILE_YOLO11_RKNN = "yolov8n-pose-rk3588.rknn"
+        const val MODEL_FILE_YOLO8_RKNN_MIXED = "yolov8n-pose-rk3588.rknn"
+        const val MODEL_FILE_YOLO8_RKNN_CONSERVATIVE = "yyolov8n-pose-rk3588.rknn"
 
     }
 

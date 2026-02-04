@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(java -version)",
+      "Bash(/usr/libexec/java_home:*)",
+      "Bash(export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home)",
+      "Bash(./gradlew clean)",
+      "Bash(ls:*)",
+      "Bash(./gradlew :app:assembleDebug)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(adb install:*)",
+      "Bash(adb shell am start:*)",
+      "Bash(adb logcat:*)",
+      "Bash(find:*)",
+      "Bash(./gradlew installDebug)",
+      "Bash(adb shell ls:*)",
+      "Bash(adb shell:*)",
+      "Bash(adb pull:*)",
+      "Bash(identify:*)",
+      "Bash(sips:*)",
+      "Bash(xxd:*)",
+      "Bash(for file in *.kt)",
+      "Bash(do sed:*)",
+      "Bash(done)",
+      "Bash(./gradlew build)",
+      "Bash(./gradlew clean:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew assembleDebug -x lint)"
+    ]
+  }
+}

@@ -1,5 +1,10 @@
 pluginManagement {
     repositories {
+        // Aliyun mirrors for faster access in China
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        // Fallback to original repositories
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -9,6 +14,10 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         mavenLocal()
+        // Aliyun mirrors for faster access in China
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        // Fallback to original repositories
         google()
         mavenCentral()
     }
